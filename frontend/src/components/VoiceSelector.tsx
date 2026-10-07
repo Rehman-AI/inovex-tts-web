@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Language, Voice, organizeVoices } from "@/data/voices";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -16,6 +16,13 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Demo playback state
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const [loadingDemo, setLoadingDemo] = useState<string | null>(null);
+  const demoAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Cache demo blob URLs so re-plays are instant
+  const demoCacheRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     async function fetchVoices() {
@@ -33,6 +40,77 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
     }
     fetchVoices();
   }, []);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (demoAudioRef.current) {
+        demoAudioRef.current.pause();
+        demoAudioRef.current = null;
+      }
+      // Revoke cached blob URLs
+      demoCacheRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  const playDemo = useCallback(async (voiceName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't trigger the voice select button
+
+    // If already playing this voice, stop it
+    if (playingVoice === voiceName) {
+      if (demoAudioRef.current) {
+        demoAudioRef.current.pause();
+        demoAudioRef.current.currentTime = 0;
+      }
+      setPlayingVoice(null);
+      return;
+    }
+
+    // Stop any currently playing demo
+    if (demoAudioRef.current) {
+      demoAudioRef.current.pause();
+      demoAudioRef.current.currentTime = 0;
+    }
+
+    // Check cache first
+    const cachedUrl = demoCacheRef.current.get(voiceName);
+    if (cachedUrl) {
+      const audio = new Audio(cachedUrl);
+      demoAudioRef.current = audio;
+      setPlayingVoice(voiceName);
+      audio.onended = () => setPlayingVoice(null);
+      audio.onerror = () => setPlayingVoice(null);
+      audio.play();
+      return;
+    }
+
+    // Fetch demo from backend
+    setLoadingDemo(voiceName);
+    try {
+      const res = await fetch(`${API_URL}/api/demo?voice=${encodeURIComponent(voiceName)}`);
+      if (!res.ok) throw new Error("Demo fetch failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Cache the blob URL
+      demoCacheRef.current.set(voiceName, url);
+
+      const audio = new Audio(url);
+      demoAudioRef.current = audio;
+      setPlayingVoice(voiceName);
+      setLoadingDemo(null);
+      audio.onended = () => setPlayingVoice(null);
+      audio.onerror = () => {
+        setPlayingVoice(null);
+        setLoadingDemo(null);
+      };
+      audio.play();
+    } catch (err) {
+      console.error("Failed to play demo:", err);
+      setLoadingDemo(null);
+      setPlayingVoice(null);
+    }
+  }, [playingVoice]);
 
   const currentLanguage = useMemo(
     () => languages.find((l) => l.code === selectedLang),
@@ -146,12 +224,8 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
                   </h4>
                   <div className="grid grid-cols-2 gap-1.5">
                     {region.voices.map((voice) => (
-                      <button
+                      <div
                         key={voice.name}
-                        onClick={() => {
-                          onVoiceChange(voice.name);
-                          setIsOpen(false);
-                        }}
                         className={`px-3 py-2.5 rounded-xl text-left text-sm transition-all duration-150
                                     flex items-center gap-2 group/voice
                                     ${selectedVoice === voice.name
@@ -159,18 +233,66 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
                                       : "hover:bg-gray-50 text-gray-700"
                                     }`}
                       >
-                        <span className="text-base">
-                          {voice.gender === "Female" ? "👩" : "👨"}
-                        </span>
-                        <div>
-                          <p className="font-medium leading-tight">{voice.displayName}</p>
-                          <p className={`text-xs leading-tight ${
-                            selectedVoice === voice.name ? "text-white/70" : "text-gray-400"
-                          }`}>
-                            {voice.gender}
-                          </p>
-                        </div>
-                      </button>
+                        {/* Voice select area */}
+                        <button
+                          onClick={() => {
+                            onVoiceChange(voice.name);
+                            setIsOpen(false);
+                          }}
+                          className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+                        >
+                          <span className="text-base shrink-0">
+                            {voice.gender === "Female" ? "👩" : "👨"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-medium leading-tight truncate">{voice.displayName}</p>
+                            <p className={`text-xs leading-tight ${
+                              selectedVoice === voice.name ? "text-white/70" : "text-gray-400"
+                            }`}>
+                              {voice.gender}
+                            </p>
+                          </div>
+                        </button>
+
+                        {/* Demo play button */}
+                        <button
+                          onClick={(e) => playDemo(voice.name, e)}
+                          disabled={loadingDemo === voice.name}
+                          title={playingVoice === voice.name ? "Stop demo" : "Play demo"}
+                          className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center
+                                      transition-all duration-200 cursor-pointer
+                                      ${playingVoice === voice.name
+                                        ? selectedVoice === voice.name
+                                          ? "bg-white/30 text-white hover:bg-white/40"
+                                          : "bg-accent/15 text-accent hover:bg-accent/25"
+                                        : selectedVoice === voice.name
+                                          ? "bg-white/20 text-white hover:bg-white/30 opacity-0 group-hover/voice:opacity-100"
+                                          : "bg-gray-100 text-gray-500 hover:bg-accent/10 hover:text-accent opacity-0 group-hover/voice:opacity-100"
+                                      }
+                                      ${loadingDemo === voice.name ? "!opacity-100" : ""}
+                                      ${playingVoice === voice.name ? "!opacity-100" : ""}`}
+                        >
+                          {loadingDemo === voice.name ? (
+                            /* Loading spinner */
+                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10"
+                                      stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                          ) : playingVoice === voice.name ? (
+                            /* Stop icon */
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                              <rect x="6" y="6" width="12" height="12" rx="1" />
+                            </svg>
+                          ) : (
+                            /* Play icon */
+                            <svg className="w-3 h-3 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
