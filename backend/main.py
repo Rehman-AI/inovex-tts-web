@@ -1,22 +1,61 @@
 """
 Inovex TTS — FastAPI Backend
 Serves the Edge-TTS synthesis API for the web frontend.
+Pre-generates demo clips for ALL voices at startup for zero-lag playback.
 """
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import logging
+import os
 import uuid
-from functools import lru_cache
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 import edge_tts
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("inovex-tts")
+
+# ── Demo cache directory (persists on disk between requests) ─────────
+DEMO_CACHE_DIR = Path(os.environ.get("DEMO_CACHE_DIR", "/tmp/inovex_demo_cache"))
+DEMO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# ── In-memory cache (loaded from disk at startup) ────────────────────
+_demo_cache: dict[str, bytes] = {}
+_pregen_status = {"total": 0, "done": 0, "running": False, "errors": 0}
+
+
+# ── Lifespan: pre-generate demos on startup ──────────────────────────
+@asynccontextmanager
+async def lifespan(app):
+    """On startup, load disk cache and pre-generate missing demos."""
+    # 1. Load existing disk cache into memory
+    loaded = 0
+    for mp3_file in DEMO_CACHE_DIR.glob("*.mp3"):
+        voice_name = mp3_file.stem  # filename = voice_name.mp3
+        _demo_cache[voice_name] = mp3_file.read_bytes()
+        loaded += 1
+    logger.info(f"Loaded {loaded} cached demos from disk")
+
+    # 2. Start background pre-generation
+    task = asyncio.create_task(_pregenerate_all_demos())
+
+    yield  # App runs here
+
+    task.cancel()
+
+
 app = FastAPI(
     title="Inovex TTS API",
     description="Neural Text-to-Speech powered by Edge-TTS",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS — allow the frontend (local + deployed)
@@ -124,8 +163,108 @@ DEMO_SENTENCES: dict[str, str] = {
 }
 
 
-# ── In-memory cache for demo audio ──────────────────────────────────
-_demo_cache: dict[str, bytes] = {}
+# ── Helper: generate a single demo and cache to disk + memory ────────
+async def _generate_single_demo(voice_name: str) -> bool:
+    """Generate demo for one voice. Returns True on success."""
+    if voice_name in _demo_cache:
+        return True  # Already cached
+
+    # Check disk cache
+    cache_file = DEMO_CACHE_DIR / f"{voice_name}.mp3"
+    if cache_file.exists():
+        _demo_cache[voice_name] = cache_file.read_bytes()
+        return True
+
+    # Determine demo text from the voice's language code
+    parts = voice_name.split("-")
+    lang_code = parts[0] if parts else "en"
+    demo_text = DEMO_SENTENCES.get(lang_code, DEMO_SENTENCES["en"])
+
+    try:
+        communicate = edge_tts.Communicate(
+            text=demo_text,
+            voice=voice_name,
+            rate="+0%",
+            pitch="+0Hz",
+        )
+
+        audio_chunks: list[bytes] = []
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_chunks.append(chunk["data"])
+
+        if not audio_chunks:
+            return False
+
+        audio_bytes = b"".join(audio_chunks)
+
+        # Save to disk
+        cache_file.write_bytes(audio_bytes)
+        # Save to memory
+        _demo_cache[voice_name] = audio_bytes
+
+        return True
+    except Exception as exc:
+        logger.warning(f"Failed to generate demo for {voice_name}: {exc}")
+        return False
+
+
+# ── Background task: pre-generate ALL demos ──────────────────────────
+async def _pregenerate_all_demos():
+    """Fetch all voices and pre-generate demos for each one."""
+    _pregen_status["running"] = True
+    logger.info("Starting demo pre-generation for all voices...")
+
+    try:
+        # Wait a moment for the server to fully start
+        await asyncio.sleep(2)
+
+        voices = await edge_tts.list_voices()
+        voice_names = [v["ShortName"] for v in voices]
+        _pregen_status["total"] = len(voice_names)
+
+        # Filter out already-cached voices
+        missing = [v for v in voice_names if v not in _demo_cache]
+        _pregen_status["done"] = len(voice_names) - len(missing)
+
+        logger.info(f"Total voices: {len(voice_names)}, already cached: {_pregen_status['done']}, to generate: {len(missing)}")
+
+        for i, voice_name in enumerate(missing):
+            try:
+                success = await _generate_single_demo(voice_name)
+                if success:
+                    _pregen_status["done"] += 1
+                else:
+                    _pregen_status["errors"] += 1
+
+                # Log progress every 25 voices
+                if (i + 1) % 25 == 0:
+                    logger.info(
+                        f"Pre-generation progress: {_pregen_status['done']}/{_pregen_status['total']} "
+                        f"({_pregen_status['errors']} errors)"
+                    )
+
+                # Small delay to avoid overwhelming the Edge-TTS service
+                await asyncio.sleep(0.5)
+
+            except asyncio.CancelledError:
+                logger.info("Pre-generation cancelled (server shutting down)")
+                return
+            except Exception as exc:
+                _pregen_status["errors"] += 1
+                logger.warning(f"Error generating demo for {voice_name}: {exc}")
+                await asyncio.sleep(1)  # Back off on errors
+
+    except asyncio.CancelledError:
+        logger.info("Pre-generation cancelled")
+    except Exception as exc:
+        logger.error(f"Pre-generation failed: {exc}")
+    finally:
+        _pregen_status["running"] = False
+        logger.info(
+            f"Pre-generation complete: {_pregen_status['done']}/{_pregen_status['total']} demos ready "
+            f"({_pregen_status['errors']} errors)"
+        )
 
 
 # ── Endpoints ────────────────────────────────────────────────────────
@@ -151,10 +290,10 @@ async def list_voices():
 
 @app.get("/api/demo")
 async def demo_voice(voice: str):
-    """Generate a short demo clip for a given voice and return MP3 bytes.
-    Results are cached in memory so repeated requests are instant."""
+    """Return pre-generated demo clip for a voice. Zero lag — served from cache.
+    If not yet pre-generated, generates on-the-fly as fallback."""
 
-    # Return cached audio if available
+    # Serve from memory cache (pre-generated) — INSTANT
     if voice in _demo_cache:
         return Response(
             content=_demo_cache[voice],
@@ -162,43 +301,28 @@ async def demo_voice(voice: str):
             headers={"X-Cache": "HIT"},
         )
 
-    # Determine demo text from the voice's language code
-    # Voice names look like "en-US-JennyNeural", "fr-FR-DeniseNeural", etc.
-    parts = voice.split("-")
-    lang_code = parts[0] if parts else "en"
-    demo_text = DEMO_SENTENCES.get(lang_code, DEMO_SENTENCES["en"])
-
-    try:
-        communicate = edge_tts.Communicate(
-            text=demo_text,
-            voice=voice,
-            rate="+0%",
-            pitch="+0Hz",
-        )
-
-        audio_chunks: list[bytes] = []
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_chunks.append(chunk["data"])
-
-        if not audio_chunks:
-            raise HTTPException(status_code=500, detail="No audio data generated")
-
-        audio_bytes = b"".join(audio_chunks)
-
-        # Cache for future requests
-        _demo_cache[voice] = audio_bytes
-
+    # Fallback: generate on-the-fly if pre-generation hasn't reached this voice yet
+    success = await _generate_single_demo(voice)
+    if success and voice in _demo_cache:
         return Response(
-            content=audio_bytes,
+            content=_demo_cache[voice],
             media_type="audio/mpeg",
-            headers={"X-Cache": "MISS"},
+            headers={"X-Cache": "GENERATED"},
         )
 
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Demo generation failed: {str(exc)}")
+    raise HTTPException(status_code=500, detail="Demo generation failed")
+
+
+@app.get("/api/demo-status")
+async def demo_status():
+    """Check pre-generation progress."""
+    return {
+        "total": _pregen_status["total"],
+        "done": _pregen_status["done"],
+        "errors": _pregen_status["errors"],
+        "running": _pregen_status["running"],
+        "cached_in_memory": len(_demo_cache),
+    }
 
 
 @app.post("/api/synthesize")
@@ -241,4 +365,10 @@ async def synthesize(req: SynthesizeRequest):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "Inovex TTS API"}
+    return {
+        "status": "ok",
+        "service": "Inovex TTS API",
+        "demos_ready": _pregen_status["done"],
+        "demos_total": _pregen_status["total"],
+    }
+
