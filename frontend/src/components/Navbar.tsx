@@ -9,6 +9,7 @@ export default function Navbar() {
   const { data: session, status } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [charsRemaining, setCharsRemaining] = useState(10000);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -16,6 +17,37 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const fetchChars = () => {
+      if (session?.user?.email) {
+        const stored = localStorage.getItem(`chars_${session.user.email}`);
+        if (stored) {
+          try {
+            const data = JSON.parse(stored);
+            if (data.month === new Date().toISOString().slice(0, 7)) {
+              setCharsRemaining(data.remaining);
+            } else {
+              setCharsRemaining(10000);
+            }
+          } catch(e) {
+            setCharsRemaining(parseInt(stored));
+          }
+        } else {
+          setCharsRemaining(10000);
+        }
+      }
+    };
+    
+    fetchChars();
+    window.addEventListener('storage', fetchChars);
+    window.addEventListener('chars-updated', fetchChars);
+    
+    return () => {
+      window.removeEventListener('storage', fetchChars);
+      window.removeEventListener('chars-updated', fetchChars);
+    };
+  }, [session]);
 
   const navLinks = [
     { label: "Synthesis", href: "/studio" },
@@ -64,7 +96,7 @@ export default function Navbar() {
             <svg className="w-4 h-4 text-accent" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
             </svg>
-            <span className="text-xs font-semibold text-accent">10,000</span>
+            <span className="text-xs font-semibold text-accent">{charsRemaining.toLocaleString()}</span>
             <span className="text-xs text-muted">Free Chars / mo</span>
           </div>
 

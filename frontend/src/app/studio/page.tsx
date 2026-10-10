@@ -126,6 +126,7 @@ export default function StudioPage() {
       if (session?.user?.email) {
         const currentMonth = new Date().toISOString().slice(0, 7);
         localStorage.setItem(`chars_${session.user.email}`, JSON.stringify({ remaining: newRemaining, month: currentMonth }));
+        window.dispatchEvent(new Event('chars-updated'));
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Generation failed");
