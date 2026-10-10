@@ -272,8 +272,16 @@ async def _pregenerate_all_demos():
 async def list_voices():
     """Return all available Edge-TTS voices."""
     voices = await edge_tts.list_voices()
+    invalid_voices = {
+        "iu-Latn-CA-SiqiniqNeural",
+        "iu-Latn-CA-TaqqiqNeural",
+        "iu-Cans-CA-SiqiniqNeural",
+        "iu-Cans-CA-TaqqiqNeural",
+    }
     result = []
     for v in voices:
+        if v["ShortName"] in invalid_voices:
+            continue
         locale = v["Locale"]
         parts = locale.split("-")
         language = parts[0] if parts else locale
