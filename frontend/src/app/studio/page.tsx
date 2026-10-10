@@ -49,8 +49,11 @@ export default function StudioPage() {
   const [error, setError] = useState<string | null>(null);
   const [stability, setStability] = useState(75);
   const [clarity, setClarity] = useState(88);
+  const [clarity, setClarity] = useState(88);
   const MAX_CHARS = 10000;
   const [charsRemaining, setCharsRemaining] = useState(MAX_CHARS);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyItems, setHistoryItems] = useState<{text: string, voice: string, date: string}[]>([]);
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -78,6 +81,12 @@ export default function StudioPage() {
         const newData = { remaining: MAX_CHARS, month: currentMonth };
         localStorage.setItem(`chars_${session.user.email}`, JSON.stringify(newData));
         setCharsRemaining(MAX_CHARS);
+      }
+
+      // Load History
+      const hist = localStorage.getItem(`audio_history_${session.user.email}`);
+      if (hist) {
+        try { setHistoryItems(JSON.parse(hist)); } catch(e) {}
       }
     }
   }, [session]);
@@ -123,9 +132,14 @@ export default function StudioPage() {
 
       const newRemaining = charsRemaining - charCount;
       setCharsRemaining(newRemaining);
+      
+      const newHistory = [{ text: text.trim().substring(0, 150), voice, date: new Date().toLocaleString() }, ...historyItems].slice(0, 50);
+      setHistoryItems(newHistory);
+
       if (session?.user?.email) {
         const currentMonth = new Date().toISOString().slice(0, 7);
         localStorage.setItem(`chars_${session.user.email}`, JSON.stringify({ remaining: newRemaining, month: currentMonth }));
+        localStorage.setItem(`audio_history_${session.user.email}`, JSON.stringify(newHistory));
         window.dispatchEvent(new Event('chars-updated'));
       }
     } catch (err: unknown) {
@@ -186,39 +200,6 @@ export default function StudioPage() {
               }
               label="Text to Speech"
             />
-            <SidebarItem
-              icon={
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              }
-              label="Voice Library"
-            />
-            <SidebarItem
-              icon={
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                </svg>
-              }
-              label="Studio"
-            />
-            <SidebarItem
-              icon={
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                </svg>
-              }
-              label="Sound Effects"
-            />
-            <SidebarItem
-              icon={
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              }
-              label="Voice Cloning"
-              badge="NEW"
-            />
           </div>
         </div>
 
@@ -227,14 +208,7 @@ export default function StudioPage() {
           <p className="text-[10px] font-bold text-muted uppercase tracking-[0.12em] px-1 mb-2">WORKSPACE</p>
           <div className="space-y-0.5">
             <SidebarItem
-              icon={
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              }
-              label="Pricing & Credits"
-            />
-            <SidebarItem
+              onClick={() => setShowHistory(true)}
               icon={
                 <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -497,6 +471,62 @@ export default function StudioPage() {
           </div>
         </div>
       </aside>
+
+      {/* History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h2 className="text-lg font-bold text-charcoal flex items-center gap-2">
+                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Generation History
+              </h2>
+              <button onClick={() => setShowHistory(false)} className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {historyItems.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <p>No history yet. Generate some speech!</p>
+                </div>
+              ) : (
+                historyItems.map((item, idx) => (
+                  <div key={idx} className="p-4 rounded-xl border border-gray-100 bg-white hover:border-accent/30 transition-colors shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-md">{item.voice.split('-').pop()}</span>
+                      <span className="text-[11px] text-gray-400 font-mono">{item.date}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 italic">"{item.text}..."</p>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-gray-100 bg-gray-50 text-center">
+              <button 
+                onClick={() => {
+                  if (confirm('Clear all history?')) {
+                    setHistoryItems([]);
+                    if (session?.user?.email) localStorage.removeItem(`audio_history_${session.user.email}`);
+                  }
+                }}
+                className="text-xs text-red-500 hover:text-red-700 font-medium"
+              >
+                Clear History
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
