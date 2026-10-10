@@ -6,6 +6,7 @@ import { signIn, useSession } from "next-auth/react";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 import VoiceSelector from "@/components/VoiceSelector";
 import AudioPlayer from "@/components/AudioPlayer";
+import { saveAudioBlob, getAudioBlob, clearAllAudioBlobs } from "@/utils/indexedDB";
 
 /* ─── Sidebar Nav Item ───────────────────────────────────────── */
 function SidebarItem({
@@ -52,7 +53,9 @@ export default function StudioPage() {
   const MAX_CHARS = 10000;
   const [charsRemaining, setCharsRemaining] = useState(MAX_CHARS);
   const [showHistory, setShowHistory] = useState(false);
-  const [historyItems, setHistoryItems] = useState<{text: string, voice: string, date: string}[]>([]);
+  const [historyItems, setHistoryItems] = useState<{id: string, text: string, voice: string, date: string}[]>([]);
+  const [playingHistoryId, setPlayingHistoryId] = useState<string | null>(null);
+  const historyAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -132,7 +135,10 @@ export default function StudioPage() {
       const newRemaining = charsRemaining - charCount;
       setCharsRemaining(newRemaining);
       
-      const newHistory = [{ text: text.trim().substring(0, 150), voice, date: new Date().toLocaleString() }, ...historyItems].slice(0, 50);
+      const id = Date.now().toString();
+      await saveAudioBlob(id, blob);
+
+      const newHistory = [{ id, text: text.trim().substring(0, 150), voice, date: new Date().toLocaleString() }, ...historyItems].slice(0, 50);
       setHistoryItems(newHistory);
 
       if (session?.user?.email) {
@@ -499,23 +505,54 @@ export default function StudioPage() {
                 </div>
               ) : (
                 historyItems.map((item, idx) => (
-                  <div key={idx} className="p-4 rounded-xl border border-gray-100 bg-white hover:border-accent/30 transition-colors shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-md">{item.voice.split('-').pop()}</span>
-                      <span className="text-[11px] text-gray-400 font-mono">{item.date}</span>
+                  <div key={item.id || idx} className="p-4 rounded-xl border border-gray-100 bg-white hover:border-accent/30 transition-colors shadow-sm flex items-start gap-3">
+                    <button 
+                      onClick={async () => {
+                        if (playingHistoryId === item.id) {
+                          historyAudioRef.current?.pause();
+                          setPlayingHistoryId(null);
+                        } else {
+                          if (item.id) {
+                            const blob = await getAudioBlob(item.id);
+                            if (blob && historyAudioRef.current) {
+                              historyAudioRef.current.src = URL.createObjectURL(blob);
+                              historyAudioRef.current.play();
+                              setPlayingHistoryId(item.id);
+                            } else {
+                              alert("Audio file not found in browser storage.");
+                            }
+                          }
+                        }
+                      }}
+                      className="mt-1 w-8 h-8 flex-shrink-0 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-colors"
+                    >
+                      {playingHistoryId === item.id ? (
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-md">{item.voice.split('-').pop()}</span>
+                        <span className="text-[11px] text-gray-400 font-mono">{item.date}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 italic">"{item.text}..."</p>
                     </div>
-                    <p className="text-sm text-gray-700 italic">"{item.text}..."</p>
                   </div>
                 ))
               )}
             </div>
             
+            <audio ref={historyAudioRef} onEnded={() => setPlayingHistoryId(null)} className="hidden" />
+
             <div className="p-4 border-t border-gray-100 bg-gray-50 text-center">
               <button 
-                onClick={() => {
-                  if (confirm('Clear all history?')) {
+                onClick={async () => {
+                  if (confirm('Clear all history and delete saved audio files?')) {
                     setHistoryItems([]);
                     if (session?.user?.email) localStorage.removeItem(`audio_history_${session.user.email}`);
+                    await clearAllAudioBlobs();
                   }
                 }}
                 className="text-xs text-red-500 hover:text-red-700 font-medium"
