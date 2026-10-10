@@ -50,12 +50,39 @@ function WaveformBars({ active = false }: { active?: boolean }) {
 
 /* ─── Interactive Console Preview ────────────────────────────── */
 function ConsolePreview() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
   const voices = [
-    { name: "Chuck Miller", style: "Deep, Raspy, American", avatar: "CM", color: "#2563EB" },
-    { name: "Zainab", style: "Elegant, Crisp Urdu & English", avatar: "ZN", color: "#7C3AED" },
-    { name: "Josh", style: "Warm, Smooth Narrator", avatar: "JS", color: "#059669" },
-    { name: "Savvy", style: "Warm, Grounded Commercial", avatar: "SV", color: "#DC2626" },
+    { name: "Christopher", avatar: "CH", color: "#1D4ED8", demoVoice: "en-US-ChristopherNeural" },
+    { name: "Aria", avatar: "AR", color: "#7C3AED", demoVoice: "en-US-AriaNeural" },
+    { name: "Sonia", avatar: "SO", color: "#059669", demoVoice: "en-GB-SoniaNeural" },
+    { name: "Uzma", avatar: "UZ", color: "#E11D48", demoVoice: "ur-PK-UzmaNeural" },
   ];
+
+  const handlePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsPlaying(false);
+      } else {
+        audioRef.current.src = `/demos/${voices[activeIndex].demoVoice}.mp3`;
+        audioRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = `/demos/${voices[activeIndex].demoVoice}.mp3`;
+    link.download = `${voices[activeIndex].name}_Inovex_Demo.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="console-preview max-w-4xl mx-auto">
@@ -75,9 +102,16 @@ function ConsolePreview() {
           {voices.map((v, i) => (
             <button
               key={v.name}
+              onClick={() => {
+                setActiveIndex(i);
+                if (isPlaying && audioRef.current) {
+                  audioRef.current.pause();
+                  setIsPlaying(false);
+                }
+              }}
               className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap
                           transition-all duration-300 cursor-pointer
-                          ${i === 0
+                          ${activeIndex === i
                             ? "bg-accent text-white shadow-md shadow-accent/20"
                             : "bg-gray-50 text-charcoal hover:bg-gray-100 border border-border"
                           }`}
@@ -108,25 +142,37 @@ function ConsolePreview() {
         {/* Waveform + controls */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Ready
+            <span className={`w-2 h-2 rounded-full bg-green-500 ${isPlaying ? 'animate-pulse' : ''}`} />
+            {isPlaying ? 'Playing' : 'Ready'}
           </div>
           <span className="text-xs text-muted font-mono">0:27</span>
           <div className="flex-1">
             <WaveformBars />
           </div>
           <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-accent/10 hover:text-accent transition-all">
+            <button 
+              onClick={handleDownload}
+              title="Download MP3"
+              className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-accent/10 hover:text-accent transition-all">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </button>
-            <button className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-accent/10 hover:text-accent transition-all">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
+            <button 
+              onClick={handlePlay}
+              className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-accent/10 hover:text-accent transition-all">
+              {isPlaying ? (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 6h12v12H6z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
             </button>
           </div>
+          <audio ref={audioRef} onEnded={() => setIsPlaying(false)} className="hidden" />
         </div>
 
         {/* Bottom stats */}
