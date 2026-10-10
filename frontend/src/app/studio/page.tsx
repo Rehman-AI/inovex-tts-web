@@ -54,11 +54,29 @@ export default function StudioPage() {
 
   useEffect(() => {
     if (session?.user?.email) {
+      const currentMonth = new Date().toISOString().slice(0, 7); // e.g. "2026-10"
       const stored = localStorage.getItem(`chars_${session.user.email}`);
+      
       if (stored) {
-        setCharsRemaining(parseInt(stored));
+        try {
+          const data = JSON.parse(stored);
+          if (data.month !== currentMonth) {
+            // Reset for new month
+            const newData = { remaining: MAX_CHARS, month: currentMonth };
+            localStorage.setItem(`chars_${session.user.email}`, JSON.stringify(newData));
+            setCharsRemaining(MAX_CHARS);
+          } else {
+            setCharsRemaining(data.remaining);
+          }
+        } catch (e) {
+          // Fallback for old simple string format
+          const newData = { remaining: parseInt(stored), month: currentMonth };
+          localStorage.setItem(`chars_${session.user.email}`, JSON.stringify(newData));
+          setCharsRemaining(newData.remaining);
+        }
       } else {
-        localStorage.setItem(`chars_${session.user.email}`, MAX_CHARS.toString());
+        const newData = { remaining: MAX_CHARS, month: currentMonth };
+        localStorage.setItem(`chars_${session.user.email}`, JSON.stringify(newData));
         setCharsRemaining(MAX_CHARS);
       }
     }
@@ -106,7 +124,8 @@ export default function StudioPage() {
       const newRemaining = charsRemaining - charCount;
       setCharsRemaining(newRemaining);
       if (session?.user?.email) {
-        localStorage.setItem(`chars_${session.user.email}`, newRemaining.toString());
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        localStorage.setItem(`chars_${session.user.email}`, JSON.stringify({ remaining: newRemaining, month: currentMonth }));
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Generation failed");
