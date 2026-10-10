@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -49,6 +49,20 @@ export default function StudioPage() {
   const [error, setError] = useState<string | null>(null);
   const [stability, setStability] = useState(75);
   const [clarity, setClarity] = useState(88);
+  const MAX_CHARS = 10000;
+  const [charsRemaining, setCharsRemaining] = useState(MAX_CHARS);
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      const stored = localStorage.getItem(`chars_${session.user.email}`);
+      if (stored) {
+        setCharsRemaining(parseInt(stored));
+      } else {
+        localStorage.setItem(`chars_${session.user.email}`, MAX_CHARS.toString());
+        setCharsRemaining(MAX_CHARS);
+      }
+    }
+  }, [session]);
 
   const charCount = text.length;
 
@@ -59,6 +73,11 @@ export default function StudioPage() {
     }
     
     if (!text.trim()) return;
+    if (charCount > charsRemaining) {
+      setError("Not enough characters remaining. Please upgrade your plan or use shorter text.");
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setAudioUrl(null);
@@ -83,6 +102,12 @@ export default function StudioPage() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
+
+      const newRemaining = charsRemaining - charCount;
+      setCharsRemaining(newRemaining);
+      if (session?.user?.email) {
+        localStorage.setItem(`chars_${session.user.email}`, newRemaining.toString());
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -220,32 +245,12 @@ export default function StudioPage() {
             <VoiceSelector selectedVoice={voice} onVoiceChange={setVoice} />
           </div>
 
-          {/* Emotion Tags Bar */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <span className="text-xs font-semibold text-muted">Insert Voice Tag:</span>
-            {[
-              { tag: "whisper", label: "🤫 [whisper]", cls: "emotion-tag-whisper" },
-              { tag: "excited", label: "🎉 [excited]", cls: "emotion-tag-excited" },
-              { tag: "confident", label: "💪 [confident]", cls: "emotion-tag-confident" },
-              { tag: "sigh", label: "😮‍💨 [sigh]", cls: "emotion-tag-chuckles" },
-              { tag: "pause:0.5s", label: "⏸ [pause]", cls: "" },
-            ].map((t) => (
-              <button
-                key={t.tag}
-                onClick={() => insertTag(t.tag)}
-                className={`emotion-tag ${t.cls} cursor-pointer hover:opacity-80 transition-opacity text-xs`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
           {/* Text Input */}
           <div className="mb-5">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Type or paste your text here... Use [emotion] tags for expressive speech synthesis."
+              placeholder="Type or paste your text here..."
               className="text-input"
               style={{ minHeight: "220px" }}
             />
@@ -257,18 +262,9 @@ export default function StudioPage() {
                 >
                   Clear text
                 </button>
-                <button className="text-xs text-muted hover:text-accent transition-colors flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Add speaker
-                </button>
-                <button className="text-xs text-muted hover:text-accent transition-colors flex items-center gap-1">
-                  ✨ Auto-tag tone
-                </button>
               </div>
-              <span className="text-xs font-mono font-medium text-muted">
-                ↻ {charCount.toLocaleString()} / 10,000 characters
+              <span className={`text-xs font-mono font-medium ${charCount > charsRemaining ? 'text-red-500' : 'text-muted'}`}>
+                ↻ {charCount.toLocaleString()} / {charsRemaining.toLocaleString()} characters remaining
               </span>
             </div>
           </div>

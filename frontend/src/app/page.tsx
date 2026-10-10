@@ -130,12 +130,10 @@ function ConsolePreview() {
         {/* Text preview */}
         <div className="bg-bg-alt rounded-xl p-5 mb-4 border border-border">
           <p className="text-sm leading-relaxed text-charcoal">
-            <span className="emotion-tag emotion-tag-confident mr-1">[confident]</span>
-            {" "}Let me tell you something. I&apos;ve been in this business twenty years.
+            Let me tell you something. I&apos;ve been in this business twenty years.
             I&apos;ve seen trends come and go, I&apos;ve seen people bet everything on the wrong thing, and
             I&apos;ve been right about enough of it to know when something is different.
-            <span className="emotion-tag emotion-tag-chuckles mx-1">[chuckles]</span>
-            {" "}Actually my guys will tell you I never say it.
+            Actually my guys will tell you I never say it.
           </p>
         </div>
 
