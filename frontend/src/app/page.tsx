@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { signIn, useSession } from "next-auth/react";
 
 /* ─── Scroll-reveal hook ─────────────────────────────────────── */
 function useReveal() {
@@ -183,10 +184,10 @@ export default function LandingPage() {
   ];
 
   const voiceArtists = [
-    { name: "Chuck Miller", style: "Deep, Raspy", accent: "American", avatar: "CM", color: "#2563EB", uses: "94.2K" },
-    { name: "Zainab", style: "Elegant, Crisp", accent: "Urdu & English", avatar: "ZN", color: "#7C3AED", uses: "94.2K" },
-    { name: "Josh", style: "Warm, Smooth", accent: "Narrator", avatar: "JS", color: "#059669", uses: "71.7K" },
-    { name: "Savvy", style: "Warm, Grounded", accent: "Commercial", avatar: "SV", color: "#DC2626", uses: "25.8K" },
+    { name: "Chuck Miller", style: "Deep, Raspy", accent: "American", avatar: "CM", color: "#2563EB", uses: "94.2K", demoVoice: "en-US-GuyNeural" },
+    { name: "Zainab", style: "Elegant, Crisp", accent: "Urdu & English", avatar: "ZN", color: "#7C3AED", uses: "94.2K", demoVoice: "ur-PK-UzmaNeural" },
+    { name: "Josh", style: "Warm, Smooth", accent: "Narrator", avatar: "JS", color: "#059669", uses: "71.7K", demoVoice: "en-US-BrandonNeural" },
+    { name: "Savvy", style: "Warm, Grounded", accent: "Commercial", avatar: "SV", color: "#DC2626", uses: "25.8K", demoVoice: "en-US-JennyNeural" },
   ];
 
   const pricing = [
@@ -289,7 +290,10 @@ export default function LandingPage() {
               </svg>
               Launch Studio for Free
             </Link>
-            <button className="btn-secondary text-base px-8 py-3.5">
+            <button
+              onClick={() => document.getElementById('voice-artists')?.scrollIntoView({ behavior: 'smooth' })}
+              className="btn-secondary text-base px-8 py-3.5"
+            >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
@@ -402,7 +406,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════ VOICE ARTISTS ════════════════════ */}
-      <section className="py-20 bg-bg-alt">
+      <section className="py-20 bg-bg-alt" id="voice-artists">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex items-end justify-between mb-12 reveal">
             <div>
@@ -439,15 +443,21 @@ export default function LandingPage() {
                   </div>
                   <p className="text-sm text-subtext mb-3">{artist.style}, {artist.accent}</p>
                   <div className="flex gap-2">
-                    <button className="flex-1 btn-primary text-xs py-2 justify-center rounded-lg">
+                    <button
+                      onClick={() => {
+                        const audio = new Audio(`/demos/${artist.demoVoice}.mp3`);
+                        audio.play().catch(() => {});
+                      }}
+                      className="flex-1 btn-primary text-xs py-2 justify-center rounded-lg"
+                    >
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                       Demo
                     </button>
-                    <button className="flex-1 btn-secondary text-xs py-2 justify-center rounded-lg">
+                    <Link href="/studio" className="flex-1 btn-secondary text-xs py-2 justify-center rounded-lg">
                       Use Voice
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -505,13 +515,15 @@ export default function LandingPage() {
                   ))}
                 </ul>
 
-                <button className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                <Link
+                  href="/studio"
+                  className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer text-center block ${
                   plan.featured
                     ? "btn-primary justify-center"
                     : "border border-border text-charcoal hover:border-accent hover:text-accent"
                 }`}>
                   {plan.cta}
-                </button>
+                </Link>
               </div>
             ))}
           </div>
@@ -553,7 +565,9 @@ export default function LandingPage() {
                 </svg>
                 Try the Studio
               </Link>
-              <button className="inline-flex items-center gap-2 px-8 py-3.5 border-2 border-white/30 text-white font-semibold rounded-xl
+              <button
+                onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center gap-2 px-8 py-3.5 border-2 border-white/30 text-white font-semibold rounded-xl
                                   hover:bg-white/10 transition-all duration-200">
                 📄 API Docs
               </button>
@@ -588,28 +602,28 @@ export default function LandingPage() {
             <div>
               <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">SYNTHESIS PLATFORM</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#">Speech Studio</a></li>
-                <li><a href="#">Voice Library</a></li>
-                <li><a href="#">Voice Cloning</a></li>
-                <li><a href="#">Sound Effects</a></li>
+                <li><Link href="/studio">Speech Studio</Link></li>
+                <li><Link href="/studio">Voice Library</Link></li>
+                <li><Link href="/studio">Voice Cloning</Link></li>
+                <li><Link href="/studio">Sound Effects</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">DEVELOPERS</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#">API Reference v4</a></li>
-                <li><a href="#">SDK & Libraries</a></li>
-                <li><a href="#">Webhooks</a></li>
-                <li><a href="#">Status Page</a></li>
+                <li><Link href="/studio">API Reference v4</Link></li>
+                <li><Link href="/studio">SDK & Libraries</Link></li>
+                <li><Link href="/studio">Webhooks</Link></li>
+                <li><Link href="/studio">Status Page</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">PAYMENTS & SETTLEMENT</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#">Easypaisa</a></li>
-                <li><a href="#">JazzCash</a></li>
-                <li><a href="#">Visa / Mastercard</a></li>
-                <li><a href="#">Enterprise Invoicing</a></li>
+                <li><Link href="/#pricing">Easypaisa</Link></li>
+                <li><Link href="/#pricing">JazzCash</Link></li>
+                <li><Link href="/#pricing">Visa / Mastercard</Link></li>
+                <li><Link href="/#pricing">Enterprise Invoicing</Link></li>
               </ul>
             </div>
           </div>
