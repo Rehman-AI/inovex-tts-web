@@ -1,216 +1,629 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useEffect, useRef } from "react";
+import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-import VoiceSelector from "@/components/VoiceSelector";
-import AudioPlayer from "@/components/AudioPlayer";
+/* ─── Scroll-reveal hook ─────────────────────────────────────── */
+function useReveal() {
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -60px 0px" }
+    );
 
-export default function Home() {
-  const [text, setText] = useState("");
-  const [voice, setVoice] = useState("en-US-JennyNeural");
-  const [ratePct, setRatePct] = useState(0);
-  const [pitchHz, setPitchHz] = useState(0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    document.querySelectorAll(".reveal, .reveal-left, .reveal-right").forEach((el) => {
+      observer.observe(el);
+    });
 
-  const charCount = text.length;
+    return () => observer.disconnect();
+  }, []);
+}
 
-  const handleGenerate = useCallback(async () => {
-    if (!text.trim()) return;
-    setIsGenerating(true);
-    setError(null);
-    setAudioUrl(null);
+/* ─── Waveform animation component ───────────────────────────── */
+function WaveformBars({ active = false }: { active?: boolean }) {
+  return (
+    <div className="flex items-center gap-[2px] h-6">
+      {Array.from({ length: 24 }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-[2.5px] rounded-full transition-all duration-300 ${
+            active ? "bg-accent" : "bg-gray-300"
+          }`}
+          style={{
+            height: active
+              ? `${Math.random() * 18 + 6}px`
+              : `${Math.sin(i * 0.5) * 6 + 8}px`,
+            animationDelay: `${i * 0.05}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
-    try {
-      const res = await fetch(`${API_URL}/api/synthesize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: text.trim(),
-          voice,
-          rate_pct: ratePct,
-          pitch_hz: pitchHz,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ detail: "Unknown error" }));
-        throw new Error(data.detail || `Server error ${res.status}`);
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      setAudioUrl(url);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [text, voice, ratePct, pitchHz]);
+/* ─── Interactive Console Preview ────────────────────────────── */
+function ConsolePreview() {
+  const voices = [
+    { name: "Chuck Miller", style: "Deep, Raspy, American", avatar: "CM", color: "#2563EB" },
+    { name: "Zainab", style: "Elegant, Crisp Urdu & English", avatar: "ZN", color: "#7C3AED" },
+    { name: "Josh", style: "Warm, Smooth Narrator", avatar: "JS", color: "#059669" },
+    { name: "Savvy", style: "Warm, Grounded Commercial", avatar: "SV", color: "#DC2626" },
+  ];
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8 md:py-12">
-      {/* Hero */}
-      <div className="text-center mb-10 animate-fadeIn">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-charcoal mb-3 tracking-tight">
-          Convert Text to{" "}
-          <span className="bg-gradient-to-r from-accent to-accent-light bg-clip-text text-transparent">
-            Speech
-          </span>
-        </h1>
-        <p className="text-subtext text-lg max-w-xl mx-auto">
-          Generate high-fidelity AI audio with 400+ neural voices across 100+ languages.
-          Instantly.
-        </p>
+    <div className="console-preview max-w-4xl mx-auto">
+      {/* Top bar */}
+      <div className="topbar">
+        <div className="dot bg-red-400" />
+        <div className="dot bg-yellow-400" />
+        <div className="dot bg-green-400" />
+        <span className="ml-3 text-xs font-medium text-muted">🔊 Interactive Acoustic Console</span>
+        <span className="ml-auto text-xs text-muted">voices v4.2 — emotive</span>
       </div>
 
-      {/* Main Generator Card */}
-      <div className="glass-card p-6 md:p-8 animate-fadeIn" style={{ animationDelay: "0.1s" }}>
-        {/* Voice Selector */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-charcoal mb-2">
-            Select Voice
-          </label>
-          <VoiceSelector selectedVoice={voice} onVoiceChange={setVoice} />
-        </div>
-
-        {/* Sliders Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Speed */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-charcoal">Speed</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-mono text-accent font-bold">
-                  {ratePct > 0 ? `+${ratePct}` : ratePct}%
-                </span>
-                <button
-                  onClick={() => setRatePct(0)}
-                  className="text-xs text-gray-400 hover:text-accent transition-colors"
-                  title="Reset"
-                >
-                  ↺
-                </button>
-              </div>
-            </div>
-            <input
-              type="range"
-              min={-50}
-              max={50}
-              step={5}
-              value={ratePct}
-              onChange={(e) => setRatePct(parseInt(e.target.value))}
-              className="slider-track"
-            />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>Slower</span>
-              <span>Faster</span>
-            </div>
-          </div>
-
-          {/* Pitch */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-charcoal">Pitch</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-mono text-accent font-bold">
-                  {pitchHz > 0 ? `+${pitchHz}` : pitchHz}Hz
-                </span>
-                <button
-                  onClick={() => setPitchHz(0)}
-                  className="text-xs text-gray-400 hover:text-accent transition-colors"
-                  title="Reset"
-                >
-                  ↺
-                </button>
-              </div>
-            </div>
-            <input
-              type="range"
-              min={-50}
-              max={50}
-              step={5}
-              value={pitchHz}
-              onChange={(e) => setPitchHz(parseInt(e.target.value))}
-              className="slider-track"
-            />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>Lower</span>
-              <span>Higher</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Text Input */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-semibold text-charcoal">Text Input</label>
-            <span className="text-xs text-gray-400">Output: MP3 (320 kbps)</span>
-          </div>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Type or paste your text here to create high-quality, natural-sounding audio..."
-            className="text-input"
-          />
-          <div className="flex items-center justify-between mt-2">
+      {/* Console body */}
+      <div className="p-6 pb-5">
+        {/* Voice chips */}
+        <div className="flex items-center gap-3 mb-5 overflow-x-auto pb-2">
+          {voices.map((v, i) => (
             <button
-              onClick={() => setText("")}
-              className="text-xs text-gray-400 hover:text-red-400 transition-colors"
+              key={v.name}
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap
+                          transition-all duration-300 cursor-pointer
+                          ${i === 0
+                            ? "bg-accent text-white shadow-md shadow-accent/20"
+                            : "bg-gray-50 text-charcoal hover:bg-gray-100 border border-border"
+                          }`}
             >
-              Clear text
+              <span
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white`}
+                style={{ background: v.color }}
+              >
+                {v.avatar}
+              </span>
+              {v.name}
             </button>
-            <span className="text-xs font-mono font-medium text-gray-400">
-              {charCount.toLocaleString()} characters
+          ))}
+        </div>
+
+        {/* Text preview */}
+        <div className="bg-bg-alt rounded-xl p-5 mb-4 border border-border">
+          <p className="text-sm leading-relaxed text-charcoal">
+            <span className="emotion-tag emotion-tag-confident mr-1">[confident]</span>
+            {" "}Let me tell you something. I&apos;ve been in this business twenty years.
+            I&apos;ve seen trends come and go, I&apos;ve seen people bet everything on the wrong thing, and
+            I&apos;ve been right about enough of it to know when something is different.
+            <span className="emotion-tag emotion-tag-chuckles mx-1">[chuckles]</span>
+            {" "}Actually my guys will tell you I never say it.
+          </p>
+        </div>
+
+        {/* Waveform + controls */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Ready
+          </div>
+          <span className="text-xs text-muted font-mono">0:27</span>
+          <div className="flex-1">
+            <WaveformBars />
+          </div>
+          <div className="flex gap-2">
+            <button className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-accent/10 hover:text-accent transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
+            <button className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-accent/10 hover:text-accent transition-all">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom stats */}
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-4 text-xs text-muted">
+            <span>🔊 Inovex v4 Neural</span>
+            <span>Latency: <span className="text-green-600 font-semibold">48.7ms</span></span>
+          </div>
+          <div className="flex items-center gap-1">
+            {["H", "I", "G", "H"].map((letter, i) => (
+              <span key={i} className="w-5 h-5 rounded bg-accent/10 text-accent text-[10px] font-bold flex items-center justify-center">
+                {letter}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Landing Page ─────────────────────────────────────── */
+export default function LandingPage() {
+  useReveal();
+
+  const features = [
+    {
+      icon: "🧠",
+      title: "Contextual Emotion Engine",
+      description: "Direct emotion into your content from anger, joy, sadness, empathy, and sarcasm via simple text tags — no re-recording, no complex integration.",
+      badge: "CORE ENGINE",
+      link: "LEARN MORE →",
+    },
+    {
+      icon: "⚡",
+      title: "Sub-60ms Stream Streaming",
+      description: "Stream synthesis in under 60 milliseconds per chunk for real-time applications. Synthesis speed that matches live human conversational pacing.",
+      badge: "FULL SUPER REALTIME",
+      link: "LATENCY REFERENCE →",
+    },
+    {
+      icon: "🎭",
+      title: "Zero-Shot Voice Cloning",
+      description: "Create a synthetic voice from just 3 seconds of clean audio. Match accent, tone, and personality instantly.",
+      badge: "3 SECONDS OF AUDIO",
+      link: "QUALITY REFERENCE →",
+    },
+    {
+      icon: "🌙",
+      title: "Urdu & South Asian Dialects",
+      description: "Native fluency in Punjabi, Sindhi, Balochi, Pashto, and more — with frame-accurate emotive pacing and cultural intonation.",
+      badge: "NATIVE SYNTHESIS",
+      link: "ALL DIALECTS →",
+    },
+  ];
+
+  const voiceArtists = [
+    { name: "Chuck Miller", style: "Deep, Raspy", accent: "American", avatar: "CM", color: "#2563EB", uses: "94.2K" },
+    { name: "Zainab", style: "Elegant, Crisp", accent: "Urdu & English", avatar: "ZN", color: "#7C3AED", uses: "94.2K" },
+    { name: "Josh", style: "Warm, Smooth", accent: "Narrator", avatar: "JS", color: "#059669", uses: "71.7K" },
+    { name: "Savvy", style: "Warm, Grounded", accent: "Commercial", avatar: "SV", color: "#DC2626", uses: "25.8K" },
+  ];
+
+  const pricing = [
+    {
+      name: "Starter",
+      price: "Rs 0",
+      period: "/month",
+      badge: null,
+      features: ["10,000 characters free monthly", "Access to 400+ Neural voices", "Community-tier TTS voices", "10-minute max streaming"],
+      cta: "Start Free",
+      featured: false,
+    },
+    {
+      name: "Creator Pack",
+      price: "Rs 1,500",
+      period: "PKR / mo",
+      badge: "1 Lac Chars",
+      features: ["100,000 characters (≈1.5 hrs)", "Top Premium License Voices", "8 Premier Voice Identities", "Priority Queue Access"],
+      cta: "Unlock Pro",
+      featured: false,
+    },
+    {
+      name: "Pro Creator",
+      price: "Rs 2,000",
+      period: "PKR / mo",
+      badge: "MOST POPULAR",
+      features: ["500,000 characters / month", "Instant Voice Cloning (3 slots)", "Low-Latency Professional Audio", "Studio-Tier Priority Routing"],
+      cta: "Start Pro Studio",
+      featured: true,
+    },
+    {
+      name: "Enterprise Ultra",
+      price: "Rs 2,500",
+      period: "PKR / mo",
+      badge: "10 Lac Chars",
+      features: ["1,000,000 characters (≈16 hrs)", "Unlimited Concurrent Streams", "Dedicated Queue + Webhooks", "Extended Historical Access"],
+      cta: "Buy Ultra",
+      featured: false,
+    },
+  ];
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  return (
+    <>
+      {/* ═══════════════════ HERO SECTION ═══════════════════════ */}
+      <section className="hero-section pt-8 pb-20 md:pt-16 md:pb-32">
+        {/* Background video */}
+        <video
+          ref={videoRef}
+          className="hero-video-bg"
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster=""
+        >
+          <source
+            src="https://cdn.coverr.co/videos/coverr-sound-waves-visualization/1080p.mp4"
+            type="video/mp4"
+          />
+        </video>
+        <div className="hero-overlay" />
+
+        <div className="hero-content max-w-6xl mx-auto px-6">
+          {/* Top badges */}
+          <div className="flex items-center justify-center gap-3 mb-8 animate-fadeIn">
+            <span className="badge badge-blue">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              Neural v4 Live
+            </span>
+            <span className="badge badge-green">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Sub-60ms Latency
+            </span>
+            <span className="badge badge-purple">
+              400+ Voices
             </span>
           </div>
-        </div>
 
-        {/* Generate Button */}
-        <button
-          onClick={handleGenerate}
-          disabled={!text.trim() || isGenerating}
-          className="btn-generate w-full text-lg"
-        >
-          {isGenerating ? (
-            <>
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Generating...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
-              </svg>
-              Generate Speech
-            </>
-          )}
-        </button>
-
-        {/* Error */}
-        {error && (
-          <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm animate-fadeIn">
-            ⚠️ {error}
+          {/* Headline */}
+          <div className="text-center mb-8 animate-fadeInUp">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-charcoal leading-[1.1] tracking-tight mb-6">
+              Synthesize{" "}
+              <span className="text-gradient">Human Emotion</span>
+              <br />
+              into Voice in Real-Time.
+            </h1>
+            <p className="text-lg md:text-xl text-subtext max-w-2xl mx-auto leading-relaxed">
+              The next-generation neural acoustic engine with industry-first emotive inflections,
+              sub-60ms latency, and native Pakistani & South Asian voice dubbing.
+            </p>
           </div>
-        )}
-      </div>
 
-      {/* Audio Player */}
-      <AudioPlayer audioUrl={audioUrl} isGenerating={isGenerating} />
+          {/* CTA Buttons */}
+          <div className="flex items-center justify-center gap-4 mb-16 animate-fadeInUp" style={{ animationDelay: "0.15s" }}>
+            <Link href="/studio" className="btn-primary text-base px-8 py-3.5">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Launch Studio for Free
+            </Link>
+            <button className="btn-secondary text-base px-8 py-3.5">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              Listen to Demos
+            </button>
+          </div>
 
-      {/* Footer */}
-      <footer className="text-center mt-12 text-xs text-gray-400">
-        <p>
-          © {new Date().getFullYear()} Inovex TTS • All rights reserved •{" "}
-          <a href="#" className="hover:text-accent transition-colors">Privacy Policy</a> •{" "}
-          <a href="#" className="hover:text-accent transition-colors">Terms of Service</a>
-        </p>
+          {/* Console Preview */}
+          <div className="animate-scaleIn" style={{ animationDelay: "0.25s" }}>
+            <ConsolePreview />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ TRUST BAND ════════════════════════ */}
+      <section className="py-16 bg-bg-alt border-y border-border">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="reveal flex flex-col md:flex-row items-center gap-8">
+            <div className="md:w-1/2">
+              <h2 className="text-3xl md:text-4xl font-bold text-charcoal leading-tight mb-4">
+                Trusted by 45,000+ creators,
+                <br />game studios, and AI agent
+                <br />developers.
+              </h2>
+              <div className="flex items-center gap-4 mt-4">
+                <div className="flex -space-x-2">
+                  {["#2563EB", "#7C3AED", "#059669", "#DC2626", "#F59E0B"].map((color, i) => (
+                    <div
+                      key={i}
+                      className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
+                      style={{ background: color, zIndex: 5 - i }}
+                    >
+                      {["A", "B", "C", "D", "E"][i]}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">4.58 / 5.0 <span className="text-charcoal font-medium">on 4,200+ reviews</span></p>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:w-1/2">
+              <div className="bg-surface rounded-xl border border-border p-5">
+                <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-3">BENCHMARK: REAL-TO-FIRST-CHUNK (TTFC)</p>
+                <div className="space-y-3">
+                  {[
+                    { name: "Inovex Neural v4", val: "48ms", w: "18%", accent: true },
+                    { name: "Competitor A", val: "240ms", w: "55%", accent: false },
+                    { name: "Competitor B", val: "380ms", w: "80%", accent: false },
+                    { name: "Industry Average", val: "450ms", w: "100%", accent: false },
+                  ].map((item) => (
+                    <div key={item.name}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className={item.accent ? "text-accent font-semibold" : "text-muted"}>{item.name}</span>
+                        <span className={item.accent ? "text-accent font-bold" : "text-charcoal font-medium"}>{item.val}</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1000 ${item.accent ? "bg-accent" : "bg-gray-300"}`}
+                          style={{ width: item.w }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ FEATURES ══════════════════════════ */}
+      <section className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16 reveal">
+            <p className="text-xs font-bold text-accent uppercase tracking-[0.15em] mb-3">ARCHITECTURAL SUPREMACY</p>
+            <h2 className="text-3xl md:text-5xl font-bold text-charcoal leading-tight mb-4">
+              Engineered for Hyper-Realistic Inflection
+              <br />and Micro-Latency
+            </h2>
+            <p className="text-subtext text-lg max-w-2xl mx-auto">
+              Skip prototyping in flat, robotic sentences. Ship products that sound expressive and direct without an
+              engine overhaul.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {features.map((f, i) => (
+              <div
+                key={f.title}
+                className="feature-card reveal"
+                style={{ transitionDelay: `${i * 0.1}s` }}
+              >
+                <span className="text-3xl mb-4 block">{f.icon}</span>
+                <h3 className="text-lg font-bold text-charcoal mb-2">{f.title}</h3>
+                <p className="text-sm text-subtext leading-relaxed mb-4">{f.description}</p>
+                <span className="text-[10px] font-bold text-accent uppercase tracking-wider">{f.badge}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ VOICE ARTISTS ════════════════════ */}
+      <section className="py-20 bg-bg-alt">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex items-end justify-between mb-12 reveal">
+            <div>
+              <p className="text-xs font-bold text-accent uppercase tracking-[0.15em] mb-2">PRE-BUILT VOICE ASSETS</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-charcoal">
+                Curated Studio Identities Ready
+                <br />for Immediate Dubbing
+              </h2>
+            </div>
+            <Link href="/studio" className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
+              All Voices →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {voiceArtists.map((artist, i) => (
+              <div
+                key={artist.name}
+                className="voice-artist-card reveal"
+                style={{ transitionDelay: `${i * 0.1}s` }}
+              >
+                <div className="artist-image">
+                  <span
+                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold"
+                    style={{ background: artist.color }}
+                  >
+                    {artist.avatar}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-bold text-charcoal">{artist.name}</h3>
+                    <span className="text-xs text-muted">{artist.uses} uses</span>
+                  </div>
+                  <p className="text-sm text-subtext mb-3">{artist.style}, {artist.accent}</p>
+                  <div className="flex gap-2">
+                    <button className="flex-1 btn-primary text-xs py-2 justify-center rounded-lg">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      Demo
+                    </button>
+                    <button className="flex-1 btn-secondary text-xs py-2 justify-center rounded-lg">
+                      Use Voice
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ PRICING ══════════════════════════ */}
+      <section className="py-20 md:py-28" id="pricing">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16 reveal">
+            <h2 className="text-3xl md:text-5xl font-bold text-charcoal mb-4">
+              Transparent PKR & Global Pricing
+            </h2>
+            <p className="text-subtext text-lg max-w-xl mx-auto">
+              No frills or hidden charges. Instant settlement via Easypaisa, JazzCash, or direct card.
+            </p>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <span className="badge badge-green">MOST POPULAR</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {pricing.map((plan, i) => (
+              <div
+                key={plan.name}
+                className={`pricing-card reveal ${plan.featured ? "featured" : ""}`}
+                style={{ transitionDelay: `${i * 0.1}s` }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-bold text-charcoal uppercase tracking-wide">{plan.name}</span>
+                  {plan.badge && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      plan.featured
+                        ? "bg-accent text-white"
+                        : "bg-gray-100 text-muted"
+                    }`}>{plan.badge}</span>
+                  )}
+                </div>
+
+                <div className="mb-5">
+                  <span className="text-3xl font-extrabold text-charcoal">{plan.price}</span>
+                  <span className="text-sm text-muted ml-1">{plan.period}</span>
+                </div>
+
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-subtext">
+                      <svg className="w-4 h-4 text-accent mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                      </svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <button className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                  plan.featured
+                    ? "btn-primary justify-center"
+                    : "border border-border text-charcoal hover:border-accent hover:text-accent"
+                }`}>
+                  {plan.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Payment methods */}
+          <div className="flex items-center justify-center gap-6 mt-10 text-xs text-muted reveal">
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+              </svg>
+              Instant Settlement via Pakistani Financial Rails
+            </span>
+            <span>💳 Easypaisa</span>
+            <span>📱 JazzCash</span>
+            <span>💳 Visa / MC</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ CTA ══════════════════════════════ */}
+      <section className="py-16 md:py-20">
+        <div className="max-w-5xl mx-auto px-6 reveal">
+          <div className="cta-section px-8 md:px-16 py-14 md:py-20 text-center relative">
+            <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4 relative z-10">
+              Ready to build with synthetic acoustic
+              <br />intelligence?
+            </h2>
+            <p className="text-white/70 text-lg mb-8 max-w-xl mx-auto relative z-10">
+              Start generating studio-grade voices at zero cost, or integrate via our API in minutes.
+            </p>
+            <div className="flex items-center justify-center gap-4 relative z-10">
+              <Link
+                href="/studio"
+                className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-accent font-semibold rounded-xl
+                           hover:bg-white/90 transition-all duration-200 shadow-lg"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                Try the Studio
+              </Link>
+              <button className="inline-flex items-center gap-2 px-8 py-3.5 border-2 border-white/30 text-white font-semibold rounded-xl
+                                  hover:bg-white/10 transition-all duration-200">
+                📄 API Docs
+              </button>
+            </div>
+
+            <p className="text-white/50 text-xs mt-8 relative z-10">
+              © 2025 Inovex AI LLC • All rights reserved
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ FOOTER ═══════════════════════════ */}
+      <footer className="site-footer py-12 mt-8">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                  </svg>
+                </div>
+                <span className="font-bold text-white">Inovex<span className="text-accent-light"> AI</span></span>
+              </div>
+              <p className="text-xs leading-relaxed text-white/50">
+                Powering high-emotion neural speech synthesis,
+                with sub-60ms latency, across 60+ regional dialects
+                for the global creator collective.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">SYNTHESIS PLATFORM</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#">Speech Studio</a></li>
+                <li><a href="#">Voice Library</a></li>
+                <li><a href="#">Voice Cloning</a></li>
+                <li><a href="#">Sound Effects</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">DEVELOPERS</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#">API Reference v4</a></li>
+                <li><a href="#">SDK & Libraries</a></li>
+                <li><a href="#">Webhooks</a></li>
+                <li><a href="#">Status Page</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">PAYMENTS & SETTLEMENT</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#">Easypaisa</a></li>
+                <li><a href="#">JazzCash</a></li>
+                <li><a href="#">Visa / Mastercard</a></li>
+                <li><a href="#">Enterprise Invoicing</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-white/40">
+            <p>© 2025 Inovex AI LLC. All rights reserved. All product names & trademarks are property of their respective holders.</p>
+            <div className="flex gap-4 mt-3 md:mt-0">
+              <a href="#">Privacy</a>
+              <a href="#">Terms</a>
+              <a href="#">Cookies</a>
+            </div>
+          </div>
+        </div>
       </footer>
-    </main>
+    </>
   );
 }

@@ -121,8 +121,8 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
       {/* Selected voice button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full glass-card p-4 flex items-center justify-between cursor-pointer 
-                   hover:shadow-lg transition-all duration-300 group"
+        className="w-full bg-surface border border-border rounded-xl p-4 flex items-center justify-between cursor-pointer 
+                   hover:border-accent hover:shadow-md transition-all duration-300 group"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">{selectedVoiceData?.lang.flag || "🌐"}</span>
@@ -147,9 +147,8 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
 
       {/* Dropdown panel */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full shadow-2xl rounded-2xl overflow-hidden
-                        border border-gray-200 max-h-[500px] flex flex-col animate-fadeIn"
-             style={{ background: "rgba(255, 255, 255, 0.97)", backdropFilter: "blur(20px)" }}>
+        <div className="absolute z-50 mt-2 w-full shadow-2xl rounded-xl overflow-hidden
+                        border border-border max-h-[500px] flex flex-col animate-fadeIn bg-surface">
           {/* Search bar */}
           <div className="p-3 border-b border-gray-100">
             <input
@@ -197,7 +196,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
                         className={`px-3 py-2.5 rounded-xl text-left text-sm transition-all duration-150
                                     flex items-center gap-2 group/voice
                                     ${selectedVoice === voice.name
-                                      ? "bg-gradient-to-r from-accent to-accent-light text-white shadow-md"
+                                      ? "bg-accent text-white shadow-md shadow-accent/20"
                                       : "hover:bg-gray-50 text-gray-700"
                                     }`}
                       >
