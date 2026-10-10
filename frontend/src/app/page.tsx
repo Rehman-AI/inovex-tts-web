@@ -184,10 +184,10 @@ export default function LandingPage() {
   ];
 
   const voiceArtists = [
-    { name: "Chuck Miller", style: "Deep, Raspy", accent: "American", avatar: "CM", color: "#2563EB", uses: "94.2K", demoVoice: "en-US-GuyNeural" },
-    { name: "Zainab", style: "Elegant, Crisp", accent: "Urdu & English", avatar: "ZN", color: "#7C3AED", uses: "94.2K", demoVoice: "ur-PK-UzmaNeural" },
-    { name: "Josh", style: "Warm, Smooth", accent: "Narrator", avatar: "JS", color: "#059669", uses: "71.7K", demoVoice: "en-US-BrandonNeural" },
-    { name: "Savvy", style: "Warm, Grounded", accent: "Commercial", avatar: "SV", color: "#DC2626", uses: "25.8K", demoVoice: "en-US-JennyNeural" },
+    { name: "Christopher", style: "Deep, Cinematic", accent: "American", avatar: "CH", color: "#1D4ED8", uses: "142.5K", demoVoice: "en-US-ChristopherNeural" },
+    { name: "Aria", style: "Expressive, Bright", accent: "American", avatar: "AR", color: "#7C3AED", uses: "118.2K", demoVoice: "en-US-AriaNeural" },
+    { name: "Sonia", style: "Elegant, Professional", accent: "British", avatar: "SO", color: "#059669", uses: "89.4K", demoVoice: "en-GB-SoniaNeural" },
+    { name: "Uzma", style: "Clear, Conversational", accent: "Urdu (Pakistani)", avatar: "UZ", color: "#E11D48", uses: "65.1K", demoVoice: "ur-PK-UzmaNeural" },
   ];
 
   const pricing = [
