@@ -49,7 +49,6 @@ export default function StudioPage() {
   const [error, setError] = useState<string | null>(null);
   const [stability, setStability] = useState(75);
   const [clarity, setClarity] = useState(88);
-  const [clarity, setClarity] = useState(88);
   const MAX_CHARS = 10000;
   const [charsRemaining, setCharsRemaining] = useState(MAX_CHARS);
   const [showHistory, setShowHistory] = useState(false);
