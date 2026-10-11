@@ -96,8 +96,7 @@ export default function StudioPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stability, setStability] = useState(75);
-  const [clarity, setClarity] = useState(88);
+  const [outputFormat, setOutputFormat] = useState<"mp3" | "wav">("mp3");
   const MAX_CHARS = 10000;
   const [charsRemaining, setCharsRemaining] = useState(MAX_CHARS);
   const [showHistory, setShowHistory] = useState(false);
@@ -532,50 +531,13 @@ export default function StudioPage() {
           )}
 
           {/* Audio Player */}
-          <AudioPlayer audioUrl={audioUrl} isGenerating={isGenerating} />
+          <AudioPlayer audioUrl={audioUrl} isGenerating={isGenerating} outputFormat={outputFormat} />
         </div>
       </main>
 
       {/* ═══ RIGHT PANEL ═══════════════════════════════════ */}
       <aside className="studio-right-panel p-4 hidden lg:block">
-        {/* Voice Controls */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold text-muted uppercase tracking-wider">Voice Controls</h3>
-          </div>
 
-          {/* Stability */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-charcoal">Stability</span>
-              <span className="text-sm font-bold text-accent">{stability}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={stability}
-              onChange={(e) => setStability(parseInt(e.target.value))}
-              className="slider-track"
-            />
-          </div>
-
-          {/* Clarity + Similarity */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-charcoal">Clarity + Similarity Boost</span>
-              <span className="text-sm font-bold text-accent">{clarity}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={clarity}
-              onChange={(e) => setClarity(parseInt(e.target.value))}
-              className="slider-track"
-            />
-          </div>
-        </div>
 
         {/* Synthesis Model */}
         <div className="mb-6">
@@ -598,12 +560,13 @@ export default function StudioPage() {
         <div className="mb-6">
           <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-3">Output Format</span>
           <div className="flex gap-2">
-            {["MP3", "WAV", "OGG"].map((fmt, i) => (
+            {(["MP3", "WAV"] as const).map((fmt) => (
               <button
                 key={fmt}
+                onClick={() => setOutputFormat(fmt.toLowerCase() as "mp3" | "wav")}
                 className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                  i === 0
-                    ? "bg-accent text-white"
+                  outputFormat === fmt.toLowerCase()
+                    ? "bg-accent text-white shadow-sm"
                     : "bg-gray-50 text-muted border border-border hover:border-accent hover:text-accent"
                 }`}
               >

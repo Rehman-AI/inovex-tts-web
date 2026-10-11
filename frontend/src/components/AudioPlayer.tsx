@@ -5,21 +5,71 @@ import { useRef, useState, useEffect, useCallback } from "react";
 interface AudioPlayerProps {
   audioUrl: string | null;
   isGenerating: boolean;
+  outputFormat?: "mp3" | "wav";
 }
 
-export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps) {
+/* ─── WAV Encoder (PCM 16-bit) ─────────────────────────────────── */
+function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const length = buffer.length;
+  const dataLength = length * blockAlign;
+  const totalSize = 44 + dataLength;
+  const arrayBuffer = new ArrayBuffer(totalSize);
+  const view = new DataView(arrayBuffer);
+
+  const writeStr = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeStr(0, "RIFF");
+  view.setUint32(4, totalSize - 8, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeStr(36, "data");
+  view.setUint32(40, dataLength, true);
+
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += bytesPerSample;
+    }
+  }
+
+  return arrayBuffer;
+}
+
+export default function AudioPlayer({
+  audioUrl,
+  isGenerating,
+  outputFormat = "mp3",
+}: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
   const prevUrlRef = useRef<string | null>(null);
 
   // When audioUrl changes, reset player state and load new audio
   useEffect(() => {
     if (audioUrl && audioUrl !== prevUrlRef.current) {
-      // Reset state for new audio
       setIsPlaying(false);
       setCurrentTime(0);
       setDuration(0);
@@ -51,12 +101,12 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
 
     // Always check the ACTUAL audio state, not the React state
     if (audio.paused || audio.ended) {
-      // If the audio hasn't been loaded yet, load it
       if (!audio.src || audio.readyState === 0) {
         audio.src = audioUrl;
         audio.load();
       }
-      audio.play()
+      audio
+        .play()
         .then(() => setIsPlaying(true))
         .catch((err) => {
           console.error("Play failed:", err);
@@ -85,14 +135,11 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
-    // Only auto-play if the audio is paused (first load)
     if (audio.paused && audio.currentTime === 0) {
-      audio.play()
+      audio
+        .play()
         .then(() => setIsPlaying(true))
-        .catch(() => {
-          // Browser blocked autoplay — user can click play manually
-          setIsPlaying(false);
-        });
+        .catch(() => setIsPlaying(false));
     }
   }, [audioUrl]);
 
@@ -111,8 +158,6 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
   };
 
   const handleEnded = () => setIsPlaying(false);
-
-  // Sync React state from actual audio element events
   const handlePause = () => setIsPlaying(false);
   const handlePlay = () => setIsPlaying(true);
   const handleError = () => {
@@ -127,13 +172,45 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const downloadAudio = () => {
+  const downloadAudio = useCallback(async () => {
     if (!audioUrl) return;
-    const a = document.createElement("a");
-    a.href = audioUrl;
-    a.download = `inovex_tts_${Date.now()}.mp3`;
-    a.click();
-  };
+
+    try {
+      if (outputFormat === "wav") {
+        setIsConverting(true);
+        const audioContext = new AudioContext();
+        const response = await fetch(audioUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const wavBuffer = audioBufferToWav(audioBuffer);
+        const wavBlob = new Blob([wavBuffer], { type: "audio/wav" });
+        const wavUrl = URL.createObjectURL(wavBlob);
+
+        const a = document.createElement("a");
+        a.href = wavUrl;
+        a.download = `inovex_tts_${Date.now()}.wav`;
+        a.click();
+
+        URL.revokeObjectURL(wavUrl);
+        await audioContext.close();
+        setIsConverting(false);
+      } else {
+        // MP3 — download original blob directly
+        const a = document.createElement("a");
+        a.href = audioUrl;
+        a.download = `inovex_tts_${Date.now()}.mp3`;
+        a.click();
+      }
+    } catch (err) {
+      console.error("Download failed:", err);
+      setIsConverting(false);
+      // Fallback: download as MP3
+      const a = document.createElement("a");
+      a.href = audioUrl;
+      a.download = `inovex_tts_${Date.now()}.mp3`;
+      a.click();
+    }
+  }, [audioUrl, outputFormat]);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -188,8 +265,10 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
       {/* Generation header */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold border border-green-200">
-          <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-green-500'}`} />
-          {isPlaying ? 'Playing' : 'Ready'}
+          <span
+            className={`w-2 h-2 rounded-full ${isPlaying ? "bg-green-500 animate-pulse" : "bg-green-500"}`}
+          />
+          {isPlaying ? "Playing" : "Ready"}
         </div>
         <span className="text-xs text-muted font-mono">{formatTime(duration)}</span>
       </div>
@@ -288,23 +367,59 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
           {/* Actions */}
           <div className="flex items-center gap-1 shrink-0">
             {/* Share */}
-            <button className="p-2 rounded-lg hover:bg-gray-50 transition-all text-muted hover:text-accent" title="Share">
+            <button
+              className="p-2 rounded-lg hover:bg-gray-50 transition-all text-muted hover:text-accent"
+              title="Share"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+                />
               </svg>
             </button>
             {/* Download */}
             <button
               onClick={downloadAudio}
+              disabled={isConverting}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-white text-xs font-semibold
-                         hover:bg-accent-dark transition-all shadow-sm"
-              title="Export WAV"
+                         hover:bg-accent-dark transition-all shadow-sm disabled:opacity-60"
+              title={`Export ${outputFormat.toUpperCase()}`}
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Export WAV
+              {isConverting ? (
+                <>
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                  Converting...
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                  Export {outputFormat.toUpperCase()}
+                </>
+              )}
             </button>
           </div>
         </div>
