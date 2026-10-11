@@ -5,6 +5,7 @@
 
 const DEFAULT_UNLIMITED_EMAILS = [
   "imsami67@gmail.com",
+  "rehmanspam000@gmail.com",
 ];
 
 export function isUnlimitedUser(email?: string | null): boolean {
