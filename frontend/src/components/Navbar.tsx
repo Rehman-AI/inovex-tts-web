@@ -4,6 +4,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isUnlimitedUser } from "@/utils/userPlan";
 
 export default function Navbar() {
   const { data: session, status } = useSession();
@@ -11,6 +12,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [charsRemaining, setCharsRemaining] = useState(10000);
   const pathname = usePathname();
+  const isVIP = isUnlimitedUser(session?.user?.email);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -91,14 +93,22 @@ export default function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-3">
-          {/* Free chars badge */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-accent/5 rounded-lg">
-            <svg className="w-4 h-4 text-accent" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-            </svg>
-            <span className="text-xs font-semibold text-accent">{charsRemaining.toLocaleString()}</span>
-            <span className="text-xs text-muted">Free Chars / mo</span>
-          </div>
+          {/* Chars / VIP badge */}
+          {isVIP ? (
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+              <span className="text-xs font-bold text-purple-600 flex items-center gap-1">
+                <span className="text-sm font-black leading-none">∞</span> Unlimited VIP
+              </span>
+            </div>
+          ) : (
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-accent/5 rounded-lg">
+              <svg className="w-4 h-4 text-accent" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+              <span className="text-xs font-semibold text-accent">{charsRemaining.toLocaleString()}</span>
+              <span className="text-xs text-muted">Free Chars / mo</span>
+            </div>
+          )}
 
           {/* Auth buttons */}
           {status === "loading" ? (

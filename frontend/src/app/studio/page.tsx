@@ -7,6 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 import VoiceSelector from "@/components/VoiceSelector";
 import AudioPlayer from "@/components/AudioPlayer";
 import { saveAudioBlob, getAudioBlob, clearAllAudioBlobs } from "@/utils/indexedDB";
+import { isUnlimitedUser } from "@/utils/userPlan";
 
 /* ─── Featured / Suggested Voices ────────────────────────────── */
 const FEATURED_VOICES = [
@@ -89,6 +90,7 @@ function SidebarItem({
 /* ─── Studio Page ────────────────────────────────────────────── */
 export default function StudioPage() {
   const { data: session } = useSession();
+  const isVIP = isUnlimitedUser(session?.user?.email);
   const [text, setText] = useState("");
   const [voice, setVoice] = useState("en-US-AndrewNeural");
   const [ratePct, setRatePct] = useState(0);
@@ -151,7 +153,7 @@ export default function StudioPage() {
     }
     
     if (!text.trim()) return;
-    if (charCount > charsRemaining) {
+    if (!isVIP && charCount > charsRemaining) {
       setError("Not enough characters remaining. Please upgrade your plan or use shorter text.");
       return;
     }
@@ -181,8 +183,10 @@ export default function StudioPage() {
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
 
-      const newRemaining = charsRemaining - charCount;
-      setCharsRemaining(newRemaining);
+      if (!isVIP) {
+        const newRemaining = Math.max(0, charsRemaining - charCount);
+        setCharsRemaining(newRemaining);
+      }
       
       const id = Date.now().toString();
       await saveAudioBlob(id, blob);
@@ -191,17 +195,20 @@ export default function StudioPage() {
       setHistoryItems(newHistory);
 
       if (session?.user?.email) {
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        localStorage.setItem(`chars_${session.user.email}`, JSON.stringify({ remaining: newRemaining, month: currentMonth }));
+        if (!isVIP) {
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          const newRemaining = Math.max(0, charsRemaining - charCount);
+          localStorage.setItem(`chars_${session.user.email}`, JSON.stringify({ remaining: newRemaining, month: currentMonth }));
+          window.dispatchEvent(new Event('chars-updated'));
+        }
         localStorage.setItem(`audio_history_${session.user.email}`, JSON.stringify(newHistory));
-        window.dispatchEvent(new Event('chars-updated'));
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setIsGenerating(false);
     }
-  }, [text, voice, ratePct, pitchHz, session, charsRemaining, charCount, historyItems]);
+  }, [text, voice, ratePct, pitchHz, session, isVIP, charsRemaining, charCount, historyItems]);
 
   const insertTag = (tag: string) => {
     setText((prev) => prev + `[${tag}] `);
@@ -237,7 +244,7 @@ export default function StudioPage() {
           </p>
           <div className="flex items-center gap-3 mt-2 text-[10px]">
             <span className="text-accent font-semibold cursor-pointer hover:underline">Try live benchmark →</span>
-            <span className="text-muted font-mono">10,000 / 10,000</span>
+            <span className="text-muted font-mono">{isVIP ? "∞ Unlimited VIP" : `${charsRemaining.toLocaleString()} / 10,000`}</span>
           </div>
         </div>
 
@@ -581,7 +588,8 @@ export default function StudioPage() {
           <p className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Session Stats</p>
           <div className="space-y-2">
             {[
-              { label: "Characters Used", value: `${charCount.toLocaleString()} / 10,000` },
+              { label: "Account Plan", value: isVIP ? "VIP (Unlimited)" : "Free Tier" },
+              { label: "Characters Used", value: isVIP ? `${charCount.toLocaleString()} (Unlimited)` : `${charCount.toLocaleString()} / 10,000` },
               { label: "Generations Today", value: audioUrl ? "1" : "0" },
               { label: "Avg. Latency", value: "48ms" },
               { label: "Queue Position", value: "—" },
