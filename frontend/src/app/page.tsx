@@ -55,10 +55,10 @@ function ConsolePreview() {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const voices = [
-    { name: "Christopher", avatar: "CH", color: "#1D4ED8", demoVoice: "en-US-ChristopherNeural" },
+    { name: "Andrew", avatar: "AN", color: "#1D4ED8", demoVoice: "en-US-AndrewNeural" },
+    { name: "Christopher", avatar: "CH", color: "#6B7280", demoVoice: "en-US-ChristopherNeural" },
     { name: "Aria", avatar: "AR", color: "#7C3AED", demoVoice: "en-US-AriaNeural" },
     { name: "Sonia", avatar: "SO", color: "#059669", demoVoice: "en-GB-SoniaNeural" },
-    { name: "Uzma", avatar: "UZ", color: "#E11D48", demoVoice: "ur-PK-UzmaNeural" },
   ];
 
   const handlePlay = () => {
@@ -228,10 +228,10 @@ export default function LandingPage() {
   ];
 
   const voiceArtists = [
-    { name: "Christopher", style: "Deep, Cinematic", accent: "American", avatar: "CH", color: "#1D4ED8", uses: "142.5K", demoVoice: "en-US-ChristopherNeural" },
+    { name: "Andrew", style: "Deep, Warm & Authoritative", accent: "American", avatar: "AN", color: "#1D4ED8", uses: "185.3K", demoVoice: "en-US-AndrewNeural" },
+    { name: "Christopher", style: "Deep, Cinematic", accent: "American", avatar: "CH", color: "#6B7280", uses: "142.5K", demoVoice: "en-US-ChristopherNeural" },
     { name: "Aria", style: "Expressive, Bright", accent: "American", avatar: "AR", color: "#7C3AED", uses: "118.2K", demoVoice: "en-US-AriaNeural" },
     { name: "Sonia", style: "Elegant, Professional", accent: "British", avatar: "SO", color: "#059669", uses: "89.4K", demoVoice: "en-GB-SoniaNeural" },
-    { name: "Uzma", style: "Clear, Conversational", accent: "Urdu (Pakistani)", avatar: "UZ", color: "#E11D48", uses: "65.1K", demoVoice: "ur-PK-UzmaNeural" },
   ];
 
   const pricing = [

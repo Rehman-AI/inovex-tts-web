@@ -8,6 +8,54 @@ import VoiceSelector from "@/components/VoiceSelector";
 import AudioPlayer from "@/components/AudioPlayer";
 import { saveAudioBlob, getAudioBlob, clearAllAudioBlobs } from "@/utils/indexedDB";
 
+/* ─── Featured / Suggested Voices ────────────────────────────── */
+const FEATURED_VOICES = [
+  {
+    name: "en-US-AndrewNeural",
+    displayName: "Andrew",
+    style: "Deep, Warm & Authoritative",
+    accent: "American",
+    avatar: "AN",
+    color: "#1D4ED8",
+    badge: "⭐ RECOMMENDED",
+    description: "A confident, deep male voice with natural warmth — perfect for narrations, podcasts, explainers, and professional voiceovers.",
+    featured: true,
+  },
+  {
+    name: "en-US-AriaNeural",
+    displayName: "Aria",
+    style: "Expressive & Bright",
+    accent: "American",
+    avatar: "AR",
+    color: "#7C3AED",
+    badge: "POPULAR",
+    description: "Versatile and engaging female voice for creative content.",
+    featured: false,
+  },
+  {
+    name: "en-US-ChristopherNeural",
+    displayName: "Christopher",
+    style: "Deep & Cinematic",
+    accent: "American",
+    avatar: "CH",
+    color: "#059669",
+    badge: "CINEMATIC",
+    description: "Rich cinematic tone ideal for trailers and dramatic content.",
+    featured: false,
+  },
+  {
+    name: "en-GB-SoniaNeural",
+    displayName: "Sonia",
+    style: "Elegant & Professional",
+    accent: "British",
+    avatar: "SO",
+    color: "#E11D48",
+    badge: "BRITISH",
+    description: "Refined British voice for professional and corporate use.",
+    featured: false,
+  },
+];
+
 /* ─── Sidebar Nav Item ───────────────────────────────────────── */
 function SidebarItem({
   icon,
@@ -42,7 +90,7 @@ function SidebarItem({
 export default function StudioPage() {
   const { data: session } = useSession();
   const [text, setText] = useState("");
-  const [voice, setVoice] = useState("en-US-JennyNeural");
+  const [voice, setVoice] = useState("en-US-AndrewNeural");
   const [ratePct, setRatePct] = useState(0);
   const [pitchHz, setPitchHz] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -56,6 +104,8 @@ export default function StudioPage() {
   const [historyItems, setHistoryItems] = useState<{id: string, text: string, voice: string, date: string}[]>([]);
   const [playingHistoryId, setPlayingHistoryId] = useState<string | null>(null);
   const historyAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingSuggestionVoice, setPlayingSuggestionVoice] = useState<string | null>(null);
+  const suggestionAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -152,7 +202,7 @@ export default function StudioPage() {
     } finally {
       setIsGenerating(false);
     }
-  }, [text, voice, ratePct, pitchHz]);
+  }, [text, voice, ratePct, pitchHz, session, charsRemaining, charCount, historyItems]);
 
   const insertTag = (tag: string) => {
     setText((prev) => prev + `[${tag}] `);
@@ -239,6 +289,111 @@ export default function StudioPage() {
       {/* ═══ MAIN CONTENT ══════════════════════════════════ */}
       <main className="studio-main p-6 md:p-8 pb-24">
         <div className="max-w-3xl mx-auto">
+          {/* ─── Featured Voice Suggestion ─── */}
+          <div className="mb-6">
+            <p className="text-[10px] font-bold text-muted uppercase tracking-[0.12em] mb-3">⭐ SUGGESTED VOICES</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {FEATURED_VOICES.map((fv) => (
+                <div
+                  key={fv.name}
+                  className={`relative rounded-xl border p-4 transition-all duration-300 cursor-pointer group ${
+                    voice === fv.name
+                      ? "border-accent bg-accent/5 shadow-md shadow-accent/10"
+                      : "border-border bg-surface hover:border-accent/40 hover:shadow-sm"
+                  } ${fv.featured ? "sm:col-span-2" : ""}`}
+                  onClick={() => setVoice(fv.name)}
+                >
+                  {/* Featured badge glow */}
+                  {fv.featured && voice === fv.name && (
+                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-accent/20 via-blue-400/20 to-accent/20 blur-sm -z-10" />
+                  )}
+
+                  <div className={`flex items-start gap-4 ${fv.featured ? "sm:flex-row" : "flex-col"}`}>
+                    {/* Avatar */}
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm"
+                        style={{ background: fv.color }}
+                      >
+                        {fv.avatar}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-charcoal text-sm">{fv.displayName}</h4>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                            fv.featured
+                              ? "bg-accent text-white"
+                              : "bg-gray-100 text-muted"
+                          }`}>{fv.badge}</span>
+                        </div>
+                        <p className="text-xs text-subtext">{fv.style} • {fv.accent}</p>
+                      </div>
+                    </div>
+
+                    {/* Description + actions (only for featured or on hover) */}
+                    <div className={`flex-1 ${fv.featured ? '' : 'mt-1'}`}>
+                      {fv.featured && (
+                        <p className="text-xs text-subtext leading-relaxed mb-2 hidden sm:block">
+                          {fv.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (playingSuggestionVoice === fv.name) {
+                              suggestionAudioRef.current?.pause();
+                              setPlayingSuggestionVoice(null);
+                            } else {
+                              if (suggestionAudioRef.current) {
+                                suggestionAudioRef.current.pause();
+                              }
+                              const audio = new Audio(`/demos/${fv.name}.mp3`);
+                              suggestionAudioRef.current = audio;
+                              setPlayingSuggestionVoice(fv.name);
+                              audio.onended = () => setPlayingSuggestionVoice(null);
+                              audio.onerror = () => setPlayingSuggestionVoice(null);
+                              audio.play().catch(() => setPlayingSuggestionVoice(null));
+                            }
+                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            playingSuggestionVoice === fv.name
+                              ? "bg-accent text-white shadow-sm shadow-accent/20"
+                              : "bg-gray-100 text-gray-600 hover:bg-accent/10 hover:text-accent"
+                          }`}
+                        >
+                          {playingSuggestionVoice === fv.name ? (
+                            <>
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 6h12v12H6z" />
+                              </svg>
+                              Stop
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                              Preview
+                            </>
+                          )}
+                        </button>
+                        {voice === fv.name && (
+                          <span className="flex items-center gap-1 text-[10px] text-accent font-semibold">
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                            </svg>
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Voice Selector */}
           <div className="mb-6">
             <VoiceSelector selectedVoice={voice} onVoiceChange={setVoice} />

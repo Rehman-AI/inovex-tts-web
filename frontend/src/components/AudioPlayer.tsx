@@ -14,10 +14,28 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
 
+  // When a new audioUrl arrives, load AND auto-play it
   useEffect(() => {
     if (audioUrl && audioRef.current) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.load();
+      const audio = audioRef.current;
+      audio.src = audioUrl;
+      audio.load();
+
+      // Auto-play once the audio is ready
+      const handleCanPlay = () => {
+        audio.play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {
+            // Browser may block autoplay — user can click play manually
+            setIsPlaying(false);
+          });
+        audio.removeEventListener("canplaythrough", handleCanPlay);
+      };
+      audio.addEventListener("canplaythrough", handleCanPlay);
+
+      return () => {
+        audio.removeEventListener("canplaythrough", handleCanPlay);
+      };
     }
   }, [audioUrl]);
 
@@ -25,10 +43,12 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleTimeUpdate = () => {
@@ -58,6 +78,8 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
   };
 
   const handleEnded = () => setIsPlaying(false);
+  const handlePause = () => setIsPlaying(false);
+  const handlePlay = () => setIsPlaying(true);
 
   const formatTime = (t: number) => {
     const mins = Math.floor(t / 60);
@@ -105,8 +127,8 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
       {/* Generation header */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold border border-green-200">
-          <span className="w-2 h-2 rounded-full bg-green-500" />
-          Ready
+          <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-green-500'}`} />
+          {isPlaying ? 'Playing' : 'Ready'}
         </div>
         <span className="text-xs text-muted font-mono">{formatTime(duration)}</span>
       </div>
@@ -118,6 +140,8 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={handleEnded}
+          onPause={handlePause}
+          onPlay={handlePlay}
         />
 
         <div className="flex items-center gap-4">
