@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 
 interface AudioPlayerProps {
   audioUrl: string | null;
@@ -13,43 +13,60 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const prevUrlRef = useRef<string | null>(null);
 
-  // When a new audioUrl arrives, load AND auto-play it
+  // When audioUrl changes, reset player state and load new audio
   useEffect(() => {
-    if (audioUrl && audioRef.current) {
-      const audio = audioRef.current;
-      audio.src = audioUrl;
-      audio.load();
+    if (audioUrl && audioUrl !== prevUrlRef.current) {
+      // Reset state for new audio
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setAudioError(null);
 
-      // Auto-play once the audio is ready
-      const handleCanPlay = () => {
-        audio.play()
-          .then(() => setIsPlaying(true))
-          .catch(() => {
-            // Browser may block autoplay — user can click play manually
-            setIsPlaying(false);
-          });
-        audio.removeEventListener("canplaythrough", handleCanPlay);
-      };
-      audio.addEventListener("canplaythrough", handleCanPlay);
-
-      return () => {
-        audio.removeEventListener("canplaythrough", handleCanPlay);
-      };
+      if (audioRef.current) {
+        const audio = audioRef.current;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = audioUrl;
+        audio.load();
+      }
     }
+
+    if (!audioUrl && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute("src");
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+    }
+
+    prevUrlRef.current = audioUrl;
   }, [audioUrl]);
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play()
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioUrl) return;
+
+    // Always check the ACTUAL audio state, not the React state
+    if (audio.paused || audio.ended) {
+      // If the audio hasn't been loaded yet, load it
+      if (!audio.src || audio.readyState === 0) {
+        audio.src = audioUrl;
+        audio.load();
+      }
+      audio.play()
         .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
+        .catch((err) => {
+          console.error("Play failed:", err);
+          setIsPlaying(false);
+        });
+    } else {
+      audio.pause();
+      setIsPlaying(false);
     }
-  };
+  }, [audioUrl]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -62,6 +79,22 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
       setDuration(audioRef.current.duration);
     }
   };
+
+  // Once the new audio is loaded and ready, auto-play it
+  const handleCanPlayThrough = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioUrl) return;
+
+    // Only auto-play if the audio is paused (first load)
+    if (audio.paused && audio.currentTime === 0) {
+      audio.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          // Browser blocked autoplay — user can click play manually
+          setIsPlaying(false);
+        });
+    }
+  }, [audioUrl]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
@@ -78,10 +111,17 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
   };
 
   const handleEnded = () => setIsPlaying(false);
+
+  // Sync React state from actual audio element events
   const handlePause = () => setIsPlaying(false);
   const handlePlay = () => setIsPlaying(true);
+  const handleError = () => {
+    setIsPlaying(false);
+    setAudioError("Audio failed to load. Please try generating again.");
+  };
 
   const formatTime = (t: number) => {
+    if (!isFinite(t) || isNaN(t)) return "0:00";
     const mins = Math.floor(t / 60);
     const secs = Math.floor(t % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -97,33 +137,54 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // The <audio> element is ALWAYS rendered to avoid unmount/remount issues
+  const audioElement = (
+    <audio
+      ref={audioRef}
+      preload="auto"
+      onTimeUpdate={handleTimeUpdate}
+      onLoadedMetadata={handleLoadedMetadata}
+      onCanPlayThrough={handleCanPlayThrough}
+      onEnded={handleEnded}
+      onPause={handlePause}
+      onPlay={handlePlay}
+      onError={handleError}
+      style={{ display: "none" }}
+    />
+  );
+
   // Generating state
   if (isGenerating) {
     return (
-      <div className="mt-6 bg-bg-alt border border-border rounded-xl p-6">
-        <div className="flex items-center justify-center gap-3">
-          <div className="flex gap-1">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="w-1 bg-accent rounded-full animate-soundwave"
-                style={{
-                  animationDelay: `${i * 0.15}s`,
-                  height: "20px",
-                }}
-              />
-            ))}
+      <>
+        {audioElement}
+        <div className="mt-6 bg-bg-alt border border-border rounded-xl p-6">
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex gap-1">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-accent rounded-full animate-soundwave"
+                  style={{
+                    animationDelay: `${i * 0.15}s`,
+                    height: "20px",
+                  }}
+                />
+              ))}
+            </div>
+            <span className="text-subtext font-medium">Generating audio...</span>
           </div>
-          <span className="text-subtext font-medium">Generating audio...</span>
         </div>
-      </div>
+      </>
     );
   }
 
-  if (!audioUrl) return null;
+  if (!audioUrl) return <>{audioElement}</>;
 
   return (
     <div className="mt-6 animate-fadeIn">
+      {audioElement}
+
       {/* Generation header */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-semibold border border-green-200">
@@ -133,17 +194,15 @@ export default function AudioPlayer({ audioUrl, isGenerating }: AudioPlayerProps
         <span className="text-xs text-muted font-mono">{formatTime(duration)}</span>
       </div>
 
+      {/* Error message */}
+      {audioError && (
+        <div className="mb-3 p-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">
+          ⚠️ {audioError}
+        </div>
+      )}
+
       {/* Player card */}
       <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
-        <audio
-          ref={audioRef}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleLoadedMetadata}
-          onEnded={handleEnded}
-          onPause={handlePause}
-          onPlay={handlePlay}
-        />
-
         <div className="flex items-center gap-4">
           {/* Play/Pause */}
           <button
