@@ -63,12 +63,14 @@ function SidebarItem({
   label,
   active = false,
   badge,
+  trailing,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   active?: boolean;
   badge?: string;
+  trailing?: React.ReactNode;
   onClick?: () => void;
 }) {
   return (
@@ -83,6 +85,7 @@ function SidebarItem({
           {badge}
         </span>
       )}
+      {trailing}
     </button>
   );
 }
@@ -143,6 +146,77 @@ export default function StudioPage() {
       }
     }
   }, [session]);
+
+  const handleTogglePlayHistory = async (e: React.MouseEvent, item: { id: string; text: string; voice: string }) => {
+    e.stopPropagation();
+    if (playingHistoryId === item.id) {
+      historyAudioRef.current?.pause();
+      setPlayingHistoryId(null);
+    } else {
+      if (item.id) {
+        const blob = await getAudioBlob(item.id);
+        if (blob && historyAudioRef.current) {
+          historyAudioRef.current.src = URL.createObjectURL(blob);
+          historyAudioRef.current.play().catch(() => setPlayingHistoryId(null));
+          setPlayingHistoryId(item.id);
+        } else {
+          alert("Audio file not found in browser storage.");
+        }
+      }
+    }
+  };
+
+  const handleDownloadHistoryItem = async (e: React.MouseEvent, item: { id: string; text: string; voice: string }) => {
+    e.stopPropagation();
+    try {
+      const blob = await getAudioBlob(item.id);
+      if (!blob) {
+        alert("Audio file not found in browser storage.");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const voiceShort = item.voice.split("-").pop() || "speech";
+      const cleanText = item.text.slice(0, 25).replace(/[^a-zA-Z0-9]/g, "_") || "audio";
+      a.download = `inovex_${voiceShort}_${cleanText}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download audio:", err);
+      alert("Failed to download audio file.");
+    }
+  };
+
+  const handleDeleteHistoryItem = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const updated = historyItems.filter((h) => h.id !== id);
+    setHistoryItems(updated);
+    if (session?.user?.email) {
+      localStorage.setItem(`audio_history_${session.user.email}`, JSON.stringify(updated));
+    }
+    if (playingHistoryId === id) {
+      historyAudioRef.current?.pause();
+      setPlayingHistoryId(null);
+    }
+  };
+
+  const handleClearAllHistory = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Clear all generation history and audio files?")) {
+      setHistoryItems([]);
+      if (session?.user?.email) {
+        localStorage.removeItem(`audio_history_${session.user.email}`);
+      }
+      await clearAllAudioBlobs();
+      if (playingHistoryId) {
+        historyAudioRef.current?.pause();
+        setPlayingHistoryId(null);
+      }
+    }
+  };
 
   const charCount = text.length;
 
@@ -267,16 +341,138 @@ export default function StudioPage() {
         {/* Workspace Section */}
         <div className="mt-6 px-3">
           <p className="text-[10px] font-bold text-muted uppercase tracking-[0.12em] px-1 mb-2">WORKSPACE</p>
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             <SidebarItem
-              onClick={() => setShowHistory(true)}
+              active={showHistory}
+              onClick={() => setShowHistory(!showHistory)}
               icon={
                 <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               }
               label="History"
+              badge={historyItems.length > 0 ? `${historyItems.length}` : undefined}
+              trailing={
+                <svg
+                  className={`w-3.5 h-3.5 text-muted transition-transform duration-200 ${
+                    showHistory ? "rotate-180 text-accent" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              }
             />
+
+            {/* Slide Down Bar with All History */}
+            {showHistory && (
+              <div className="mt-2 p-2.5 rounded-xl bg-surface border border-border shadow-xs animate-fadeIn space-y-2">
+                <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
+                  <span className="text-[11px] font-bold text-charcoal flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                    Saved Clips ({historyItems.length})
+                  </span>
+                  {historyItems.length > 0 && (
+                    <button
+                      onClick={handleClearAllHistory}
+                      className="text-[10px] font-semibold text-red-500 hover:text-red-700 transition-colors"
+                      title="Clear all history"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {historyItems.length === 0 ? (
+                  <div className="text-center py-5 px-1">
+                    <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-1.5 text-gray-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-[11px] font-medium text-subtext">No history yet</p>
+                    <p className="text-[10px] text-muted mt-0.5">Generate speech to view and download audio.</p>
+                  </div>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+                    {historyItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-2.5 rounded-lg border border-border bg-bg-alt hover:bg-surface hover:border-accent/40 hover:shadow-xs transition-all text-left"
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-[10px] font-bold bg-accent/10 text-accent px-1.5 py-0.5 rounded leading-none truncate max-w-[95px]">
+                            {item.voice.split("-").pop() || item.voice}
+                          </span>
+                          <span className="text-[9px] text-muted font-mono whitespace-nowrap">
+                            {item.date.split(",")[0] || item.date}
+                          </span>
+                        </div>
+
+                        <p
+                          className="text-[11px] text-charcoal line-clamp-2 leading-snug mb-2 font-normal cursor-pointer hover:text-accent"
+                          title={`Click to load into editor: "${item.text}"`}
+                          onClick={() => setText(item.text)}
+                        >
+                          "{item.text}"
+                        </p>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                          {/* Play / Pause */}
+                          <button
+                            onClick={(e) => handleTogglePlayHistory(e, item)}
+                            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
+                              playingHistoryId === item.id
+                                ? "bg-accent text-white"
+                                : "bg-surface text-subtext hover:text-accent hover:bg-accent/10 border border-border"
+                            }`}
+                            title={playingHistoryId === item.id ? "Pause" : "Play"}
+                          >
+                            {playingHistoryId === item.id ? (
+                              <>
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z" /></svg>
+                                <span>Pause</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                <span>Play</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* Action icons: Download & Delete */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => handleDownloadHistoryItem(e, item)}
+                              className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-accent text-white hover:bg-accent-dark transition-colors shadow-xs"
+                              title="Download audio file"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              <span>Save</span>
+                            </button>
+
+                            <button
+                              onClick={(e) => handleDeleteHistoryItem(e, item.id)}
+                              className="p-1 rounded text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="Delete from history"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -603,92 +799,8 @@ export default function StudioPage() {
         </div>
       </aside>
 
-      {/* History Modal */}
-      {showHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-              <h2 className="text-lg font-bold text-charcoal flex items-center gap-2">
-                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Generation History
-              </h2>
-              <button onClick={() => setShowHistory(false)} className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {historyItems.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                  <p>No history yet. Generate some speech!</p>
-                </div>
-              ) : (
-                historyItems.map((item, idx) => (
-                  <div key={item.id || idx} className="p-4 rounded-xl border border-gray-100 bg-white hover:border-accent/30 transition-colors shadow-sm flex items-start gap-3">
-                    <button 
-                      onClick={async () => {
-                        if (playingHistoryId === item.id) {
-                          historyAudioRef.current?.pause();
-                          setPlayingHistoryId(null);
-                        } else {
-                          if (item.id) {
-                            const blob = await getAudioBlob(item.id);
-                            if (blob && historyAudioRef.current) {
-                              historyAudioRef.current.src = URL.createObjectURL(blob);
-                              historyAudioRef.current.play();
-                              setPlayingHistoryId(item.id);
-                            } else {
-                              alert("Audio file not found in browser storage.");
-                            }
-                          }
-                        }
-                      }}
-                      className="mt-1 w-8 h-8 flex-shrink-0 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-colors"
-                    >
-                      {playingHistoryId === item.id ? (
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z" /></svg>
-                      ) : (
-                        <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                      )}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-md">{item.voice.split('-').pop()}</span>
-                        <span className="text-[11px] text-gray-400 font-mono">{item.date}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 italic">"{item.text}..."</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            <audio ref={historyAudioRef} onEnded={() => setPlayingHistoryId(null)} className="hidden" />
-
-            <div className="p-4 border-t border-gray-100 bg-gray-50 text-center">
-              <button 
-                onClick={async () => {
-                  if (confirm('Clear all history and delete saved audio files?')) {
-                    setHistoryItems([]);
-                    if (session?.user?.email) localStorage.removeItem(`audio_history_${session.user.email}`);
-                    await clearAllAudioBlobs();
-                  }
-                }}
-                className="text-xs text-red-500 hover:text-red-700 font-medium"
-              >
-                Clear History
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Audio element for History playback */}
+      <audio ref={historyAudioRef} onEnded={() => setPlayingHistoryId(null)} className="hidden" />
     </div>
   );
 }

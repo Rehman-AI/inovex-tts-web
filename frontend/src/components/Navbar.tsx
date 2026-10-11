@@ -54,7 +54,7 @@ export default function Navbar() {
   const navLinks = [
     { label: "Synthesis", href: "/studio" },
     { label: "Voice Library", href: "/studio" },
-    { label: "Voice Cloning", href: "/studio" },
+    { label: "Voice Cloning", href: "/studio", badge: "Coming Soon" },
     { label: "Pricing", href: "/#pricing" },
     { label: "API", href: "/#pricing" },
   ];
@@ -82,11 +82,16 @@ export default function Navbar() {
             <Link
               key={link.label}
               href={link.href}
-              className={`px-3.5 py-2 text-sm font-medium transition-colors rounded-lg hover:bg-gray-50 ${
-                pathname === link.href ? "text-accent" : "text-subtext hover:text-charcoal"
+              className={`px-3.5 py-2 text-sm font-medium transition-colors rounded-lg hover:bg-gray-50 flex items-center gap-1.5 ${
+                pathname === link.href && !link.badge ? "text-accent" : "text-subtext hover:text-charcoal"
               }`}
             >
-              {link.label}
+              <span>{link.label}</span>
+              {link.badge && (
+                <span className="text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20 px-1.5 py-0.5 rounded-full leading-none">
+                  {link.badge}
+                </span>
+              )}
             </Link>
           ))}
         </div>
@@ -192,9 +197,14 @@ export default function Navbar() {
                 key={link.label}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-sm font-medium text-subtext hover:text-charcoal hover:bg-gray-50 rounded-lg transition-colors"
+                className="flex items-center justify-between px-4 py-3 text-sm font-medium text-subtext hover:text-charcoal hover:bg-gray-50 rounded-lg transition-colors"
               >
-                {link.label}
+                <span>{link.label}</span>
+                {link.badge && (
+                  <span className="text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2 py-0.5 rounded-full leading-none">
+                    {link.badge}
+                  </span>
+                )}
               </Link>
             ))}
             {!session && (
