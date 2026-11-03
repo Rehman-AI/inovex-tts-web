@@ -340,20 +340,35 @@ async def synthesize(req: SynthesizeRequest):
     pitch_str = f"{'+' if req.pitch_hz >= 0 else ''}{req.pitch_hz}Hz"
 
     try:
-        communicate = edge_tts.Communicate(
-            text=req.text,
-            voice=req.voice,
-            rate=rate_str,
-            pitch=pitch_str,
-        )
-
-        # Collect audio bytes in memory (no disk write for web)
         audio_chunks: list[bytes] = []
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_chunks.append(chunk["data"])
+        last_err = None
+
+        # Retry up to 3 times in case of transient network or rate-limit glitches
+        for attempt in range(3):
+            try:
+                communicate = edge_tts.Communicate(
+                    text=req.text,
+                    voice=req.voice,
+                    rate=rate_str,
+                    pitch=pitch_str,
+                )
+                audio_chunks = []
+                async for chunk in communicate.stream():
+                    if chunk["type"] == "audio":
+                        audio_chunks.append(chunk["data"])
+
+                if audio_chunks:
+                    break
+            except Exception as err:
+                last_err = err
+                if attempt < 2:
+                    await asyncio.sleep(0.5 * (attempt + 1))
+                else:
+                    raise err
 
         if not audio_chunks:
+            if last_err:
+                raise last_err
             raise HTTPException(status_code=500, detail="No audio data generated")
 
         audio_bytes = b"".join(audio_chunks)
