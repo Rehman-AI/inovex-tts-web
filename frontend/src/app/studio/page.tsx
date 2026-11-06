@@ -12,47 +12,47 @@ import { isUnlimitedUser } from "@/utils/userPlan";
 /* ─── Featured / Suggested Voices ────────────────────────────── */
 const FEATURED_VOICES = [
   {
-    name: "en-US-AndrewNeural",
-    displayName: "Andrew",
-    style: "Deep, Warm & Authoritative",
-    accent: "American",
-    avatar: "AN",
-    color: "#1D4ED8",
-    badge: "⭐ RECOMMENDED",
-    description: "A confident, deep male voice with natural warmth — perfect for narrations, podcasts, explainers, and professional voiceovers.",
+    name: "af_heart",
+    displayName: "Heart (Studio HQ)",
+    style: "Ultra-Natural Human Voice • Studio Grade",
+    accent: "American English",
+    avatar: "👑",
+    color: "#D97706",
+    badge: "👑 PREMIUM KOKORO",
+    description: "Flagship Kokoro-82M studio voice. Unmatched realism, natural human breathing, warmth, and emotion — perfect for high-end narrations, ads, audiobooks, and creators.",
     featured: true,
   },
   {
-    name: "en-US-AriaNeural",
-    displayName: "Aria",
-    style: "Expressive & Bright",
-    accent: "American",
-    avatar: "AR",
+    name: "am_adam",
+    displayName: "Adam",
+    style: "Deep, Rich & Conversational",
+    accent: "American English",
+    avatar: "AD",
+    color: "#1D4ED8",
+    badge: "👑 PREMIUM MALE",
+    description: "Authoritative yet relaxed studio male voice for podcasts and documentaries.",
+    featured: false,
+  },
+  {
+    name: "bf_emma",
+    displayName: "Emma",
+    style: "Sophisticated & Expressive",
+    accent: "British English",
+    avatar: "EM",
     color: "#7C3AED",
-    badge: "POPULAR",
-    description: "Versatile and engaging female voice for creative content.",
+    badge: "👑 PREMIUM UK",
+    description: "Refined British female voice with natural cadence and tone.",
     featured: false,
   },
   {
-    name: "en-US-ChristopherNeural",
-    displayName: "Christopher",
-    style: "Deep & Cinematic",
+    name: "en-US-AndrewNeural",
+    displayName: "Andrew",
+    style: "Clear & Professional",
     accent: "American",
-    avatar: "CH",
+    avatar: "AN",
     color: "#059669",
-    badge: "CINEMATIC",
-    description: "Rich cinematic tone ideal for trailers and dramatic content.",
-    featured: false,
-  },
-  {
-    name: "en-GB-SoniaNeural",
-    displayName: "Sonia",
-    style: "Elegant & Professional",
-    accent: "British",
-    avatar: "SO",
-    color: "#E11D48",
-    badge: "BRITISH",
-    description: "Refined British voice for professional and corporate use.",
+    badge: "STANDARD NEURAL",
+    description: "Dependable standard neural voice for general readouts.",
     featured: false,
   },
 ];
@@ -479,10 +479,13 @@ export default function StudioPage() {
         {/* Bottom - API Status */}
         <div className="mt-auto px-3 py-3 border-t border-border">
           <div className="flex items-center gap-2 px-1">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             <div>
-              <p className="text-xs font-semibold text-charcoal">API Engine v4.2</p>
-              <p className="text-[10px] text-muted">Ultra-low <span className="text-green-600 font-semibold">48ms</span> synthesis latency active.</p>
+              <p className="text-xs font-semibold text-charcoal flex items-center gap-1.5">
+                Kokoro + Edge Hybrid Engine
+                <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.2 rounded">v5.0</span>
+              </p>
+              <p className="text-[10px] text-muted">54 Kokoro Studio Voices + 300+ Edge Neural Voices active.</p>
             </div>
           </div>
         </div>
@@ -550,11 +553,24 @@ export default function StudioPage() {
                               if (suggestionAudioRef.current) {
                                 suggestionAudioRef.current.pause();
                               }
-                              const audio = new Audio(`/demos/${fv.name}.mp3`);
+                              const demoSrc = (fv.name.includes("_") || fv.badge.includes("PREMIUM"))
+                                ? `${API_URL}/api/demo?voice=${fv.name}`
+                                : `/demos/${fv.name}.mp3`;
+                              const audio = new Audio(demoSrc);
                               suggestionAudioRef.current = audio;
                               setPlayingSuggestionVoice(fv.name);
                               audio.onended = () => setPlayingSuggestionVoice(null);
-                              audio.onerror = () => setPlayingSuggestionVoice(null);
+                              audio.onerror = () => {
+                                if (!demoSrc.startsWith(API_URL)) {
+                                  const fallbackAudio = new Audio(`${API_URL}/api/demo?voice=${fv.name}`);
+                                  suggestionAudioRef.current = fallbackAudio;
+                                  fallbackAudio.onended = () => setPlayingSuggestionVoice(null);
+                                  fallbackAudio.onerror = () => setPlayingSuggestionVoice(null);
+                                  fallbackAudio.play().catch(() => setPlayingSuggestionVoice(null));
+                                } else {
+                                  setPlayingSuggestionVoice(null);
+                                }
+                              };
                               audio.play().catch(() => setPlayingSuggestionVoice(null));
                             }
                           }}
