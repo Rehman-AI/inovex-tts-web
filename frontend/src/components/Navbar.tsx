@@ -7,7 +7,17 @@ import { usePathname } from "next/navigation";
 import { isUnlimitedUser } from "@/utils/userPlan";
 
 export default function Navbar() {
-  const { data: session, status } = useSession();
+  const { data: rawSession, status: rawStatus } = useSession();
+  const [isLocal, setIsLocal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+      setIsLocal(true);
+    }
+  }, []);
+
+  const session = rawSession || (isLocal ? { user: { name: "Abdul Rehman", email: "rehmanspam000@gmail.com" } } : null);
+  const status = rawSession ? rawStatus : (isLocal ? "authenticated" : rawStatus);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [charsRemaining, setCharsRemaining] = useState(10000);

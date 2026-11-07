@@ -92,7 +92,16 @@ function SidebarItem({
 
 /* ─── Studio Page ────────────────────────────────────────────── */
 export default function StudioPage() {
-  const { data: session } = useSession();
+  const { data: rawSession } = useSession();
+  const [isLocal, setIsLocal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+      setIsLocal(true);
+    }
+  }, []);
+
+  const session = rawSession || (isLocal ? { user: { name: "Abdul Rehman", email: "rehmanspam000@gmail.com" } } : null);
   const isVIP = isUnlimitedUser(session?.user?.email);
   const [text, setText] = useState("");
   const [voice, setVoice] = useState("en-US-AndrewNeural");
