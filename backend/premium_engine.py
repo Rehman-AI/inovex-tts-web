@@ -206,7 +206,7 @@ def synthesize_premium(
         text=text.strip(),
         voice=voice,
         speed=speed,
-        split_pattern=r"\n+",
+        split_pattern=r"(?<=[.!?\n])\s+",
     )
 
     audio_chunks: List[np.ndarray] = []
@@ -225,9 +225,29 @@ def synthesize_premium(
 
     full_audio = np.concatenate(audio_chunks)
 
-    buf = io.BytesIO()
-    sf.write(buf, full_audio, 24000, format="MP3")
-    mp3_bytes = buf.getvalue()
+    # 1. Peak-normalize to 0.95 so speech is loud, clear, and studio-level
+    max_amp = float(np.max(np.abs(full_audio)))
+    if max_amp > 0.01:
+        full_audio = full_audio / max_amp * 0.95
 
-    return mp3_bytes
+    # 2. Encode to high-fidelity 192kbps MP3 (PyAV) for studio acoustics
+    try:
+        import av
+        buf = io.BytesIO()
+        container = av.open(buf, mode="w", format="mp3")
+        stream = container.add_stream("mp3", rate=24000)
+        stream.bit_rate = 192000
+        frame = av.AudioFrame.from_ndarray(full_audio.reshape(1, -1).astype(np.float32), format="fltp", layout="mono")
+        frame.sample_rate = 24000
+        for packet in stream.encode(frame):
+            container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+        container.close()
+        return buf.getvalue()
+    except Exception as enc_err:
+        logger.warning(f"PyAV encoding fallback to soundfile: {enc_err}")
+        buf = io.BytesIO()
+        sf.write(buf, full_audio, 24000, format="MP3")
+        return buf.getvalue()
 
