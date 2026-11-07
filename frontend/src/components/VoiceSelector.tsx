@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Language, Voice, organizeVoices, KOKORO_PREMIUM_VOICES } from "@/data/voices";
+import { Language, Voice, organizeVoices, STUDIO_PREMIUM_VOICES } from "@/data/voices";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -30,8 +30,8 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
         const organized = organizeVoices(data);
         setLanguages(organized);
       } catch {
-        // Fallback: organize using built-in Kokoro and offline catalog
-        const organized = organizeVoices(KOKORO_PREMIUM_VOICES);
+        // Fallback: organize using built-in Studio and offline catalog
+        const organized = organizeVoices(STUDIO_PREMIUM_VOICES);
         setLanguages(organized);
       } finally {
         setLoading(false);
@@ -69,7 +69,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
       demoAudioRef.current.currentTime = 0;
     }
 
-    // Determine initial URL: Kokoro voices are served from API, static Edge-TTS from /demos/
+    // Determine initial URL: Studio voices are served from API, static Edge-TTS from /demos/
     const initialUrl = (isPremium || voiceName.includes("_"))
       ? `${API_URL}/api/demo?voice=${voiceName}`
       : `/demos/${voiceName}.mp3`;
@@ -125,12 +125,12 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
         if (voice) return { voice, region, lang };
       }
     }
-    // Check Kokoro list directly as fallback
-    const kokoro = KOKORO_PREMIUM_VOICES.find((v) => v.name === selectedVoice);
-    if (kokoro) {
+    // Check Studio list directly as fallback
+    const studioVoice = STUDIO_PREMIUM_VOICES.find((v) => v.name === selectedVoice);
+    if (studioVoice) {
       return {
-        voice: kokoro,
-        region: { code: "US", label: kokoro.accent || "American English", voices: [] },
+        voice: studioVoice,
+        region: { code: "US", label: studioVoice.accent || "American English", voices: [] },
         lang: { code: "premium", label: "Premium Voices", flag: "👑", regions: [] },
       };
     }
@@ -149,7 +149,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
   const renderVoiceCard = (voice: Voice) => {
     const isSelected = selectedVoice === voice.name;
     const isPlaying = playingVoice === voice.name;
-    const isPrem = voice.isPremium || voice.engine === "kokoro";
+    const isPrem = voice.isPremium || voice.engine === "studio";
 
     return (
       <div
@@ -234,7 +234,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
     );
   };
 
-  const isCurrentPremium = selectedVoiceData?.voice.isPremium || selectedVoiceData?.voice.engine === "kokoro";
+  const isCurrentPremium = selectedVoiceData?.voice.isPremium || selectedVoiceData?.voice.engine === "studio";
 
   return (
     <div className="relative">
@@ -273,7 +273,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
             <p className="text-xs text-gray-500 mt-0.5">
               {selectedVoiceData?.voice.accent || selectedVoiceData?.region.label || selectedVoiceData?.lang.label} •{" "}
               {selectedVoiceData?.voice.gender === "Female" ? "👩 Female" : "👨 Male"}{" "}
-              {isCurrentPremium ? "• Studio Quality (Kokoro-82M)" : "• Standard (Edge-TTS)"}
+              {isCurrentPremium ? "• Studio Quality (Inovex Studio HD)" : "• Standard (Inovex Neural)"}
             </p>
           </div>
         </div>
@@ -354,7 +354,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-extrabold text-charcoal">PREMIUM VOICES</h3>
                         <span className="text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          KOKORO-82M
+                          INOVEX STUDIO HD
                         </span>
                       </div>
                       <p className="text-xs text-subtext mt-0.5">
@@ -370,8 +370,8 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
 
               {/* Render Regions & Voices */}
               {currentLanguage?.regions.map((region) => {
-                const premiumVoices = region.voices.filter((v) => v.isPremium || v.engine === "kokoro");
-                const standardVoices = region.voices.filter((v) => !v.isPremium && v.engine !== "kokoro");
+                const premiumVoices = region.voices.filter((v) => v.isPremium || v.engine === "studio");
+                const standardVoices = region.voices.filter((v) => !v.isPremium && v.engine !== "studio");
 
                 return (
                   <div key={region.code} className="mb-5 last:mb-1">
@@ -395,7 +395,7 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
                               Premium Voices ({premiumVoices.length})
                             </h5>
                             <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded">
-                              Kokoro Studio HQ
+                              Inovex Studio HQ
                             </span>
                           </div>
                         )}

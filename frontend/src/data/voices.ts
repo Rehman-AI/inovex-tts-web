@@ -1,4 +1,4 @@
-// Voices registry with support for Kokoro-82M Studio Voices and Edge-TTS Neural Voices.
+// Voices registry with support for Inovex Studio AI Voices and Edge-TTS Neural Voices.
 // Structure: Language → Region → Speakers
 
 export interface Voice {
@@ -7,7 +7,7 @@ export interface Voice {
   gender: "Male" | "Female";
   locale: string;       // e.g. "en-US"
   isPremium?: boolean;
-  engine?: "kokoro" | "edge";
+  engine?: "studio" | "edge";
   accent?: string;
   flag?: string;
   quality?: string;
@@ -28,91 +28,93 @@ export interface Language {
   regions: Region[];
 }
 
-// ── Complete Catalog of All 54 Kokoro-82M Voices ─────────────────────────
-export const KOKORO_PREMIUM_VOICES: Voice[] = [
+// ── Complete Catalog of All 54 Inovex Studio AI Voices ─────────────────────────
+export const STUDIO_PREMIUM_VOICES: Voice[] = [
   // American English (20)
-  { name: "af_heart", displayName: "Heart (Studio HQ)", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", recommended: true, isPremium: true, engine: "kokoro" },
-  { name: "af_bella", displayName: "Bella", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "af_nicole", displayName: "Nicole", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_aoede", displayName: "Aoede", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_kore", displayName: "Kore", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_sarah", displayName: "Sarah", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_nova", displayName: "Nova", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_sky", displayName: "Sky", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_alloy", displayName: "Alloy", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_jessica", displayName: "Jessica", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "af_river", displayName: "River", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "am_adam", displayName: "Adam", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", recommended: true, isPremium: true, engine: "kokoro" },
-  { name: "am_michael", displayName: "Michael", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "am_echo", displayName: "Echo", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "am_eric", displayName: "Eric", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "am_fenrir", displayName: "Fenrir", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "am_liam", displayName: "Liam", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "am_onyx", displayName: "Onyx", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "am_puck", displayName: "Puck", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "am_santa", displayName: "Santa", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
+  { name: "af_heart", displayName: "Heart (Studio HQ)", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", recommended: true, isPremium: true, engine: "studio" },
+  { name: "af_bella", displayName: "Bella", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "af_nicole", displayName: "Nicole", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_aoede", displayName: "Aoede", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_kore", displayName: "Kore", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_sarah", displayName: "Sarah", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_nova", displayName: "Nova", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_sky", displayName: "Sky", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_alloy", displayName: "Alloy", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_jessica", displayName: "Jessica", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "af_river", displayName: "River", gender: "Female", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "am_adam", displayName: "Adam", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", recommended: true, isPremium: true, engine: "studio" },
+  { name: "am_michael", displayName: "Michael", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "am_echo", displayName: "Echo", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "am_eric", displayName: "Eric", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "am_fenrir", displayName: "Fenrir", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "am_liam", displayName: "Liam", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "am_onyx", displayName: "Onyx", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "am_puck", displayName: "Puck", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "am_santa", displayName: "Santa", gender: "Male", locale: "en-US", accent: "American English", flag: "🇺🇸", quality: "Grade B", isPremium: true, engine: "studio" },
 
   // British English (8)
-  { name: "bf_emma", displayName: "Emma", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade A", recommended: true, isPremium: true, engine: "kokoro" },
-  { name: "bf_isabella", displayName: "Isabella", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "bf_alice", displayName: "Alice", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "bf_lily", displayName: "Lily", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "bm_george", displayName: "George", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade A", recommended: true, isPremium: true, engine: "kokoro" },
-  { name: "bm_fable", displayName: "Fable", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "bm_lewis", displayName: "Lewis", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "bm_daniel", displayName: "Daniel", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "kokoro" },
+  { name: "bf_emma", displayName: "Emma", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade A", recommended: true, isPremium: true, engine: "studio" },
+  { name: "bf_isabella", displayName: "Isabella", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "bf_alice", displayName: "Alice", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "bf_lily", displayName: "Lily", gender: "Female", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "bm_george", displayName: "George", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade A", recommended: true, isPremium: true, engine: "studio" },
+  { name: "bm_fable", displayName: "Fable", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "bm_lewis", displayName: "Lewis", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "bm_daniel", displayName: "Daniel", gender: "Male", locale: "en-GB", accent: "British English", flag: "🇬🇧", quality: "Grade B", isPremium: true, engine: "studio" },
 
   // Spanish (3)
-  { name: "ef_dora", displayName: "Dora", gender: "Female", locale: "es-ES", accent: "Spanish", flag: "🇪🇸", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "em_alex", displayName: "Alex", gender: "Male", locale: "es-ES", accent: "Spanish", flag: "🇪🇸", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "em_santa", displayName: "Santa (ES)", gender: "Male", locale: "es-ES", accent: "Spanish", flag: "🇪🇸", quality: "Grade B", isPremium: true, engine: "kokoro" },
+  { name: "ef_dora", displayName: "Dora", gender: "Female", locale: "es-ES", accent: "Spanish", flag: "🇪🇸", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "em_alex", displayName: "Alex", gender: "Male", locale: "es-ES", accent: "Spanish", flag: "🇪🇸", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "em_santa", displayName: "Santa (ES)", gender: "Male", locale: "es-ES", accent: "Spanish", flag: "🇪🇸", quality: "Grade B", isPremium: true, engine: "studio" },
 
   // French (1)
-  { name: "ff_siwis", displayName: "Siwis", gender: "Female", locale: "fr-FR", accent: "French", flag: "🇫🇷", quality: "Grade A", isPremium: true, engine: "kokoro" },
+  { name: "ff_siwis", displayName: "Siwis", gender: "Female", locale: "fr-FR", accent: "French", flag: "🇫🇷", quality: "Grade A", isPremium: true, engine: "studio" },
 
   // Hindi (4)
-  { name: "hf_alpha", displayName: "Alpha", gender: "Female", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "hf_beta", displayName: "Beta", gender: "Female", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "hm_omega", displayName: "Omega", gender: "Male", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "hm_psi", displayName: "Psi", gender: "Male", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
+  { name: "hf_alpha", displayName: "Alpha", gender: "Female", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "hf_beta", displayName: "Beta", gender: "Female", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "hm_omega", displayName: "Omega", gender: "Male", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "hm_psi", displayName: "Psi", gender: "Male", locale: "hi-IN", accent: "Hindi", flag: "🇮🇳", quality: "Grade B", isPremium: true, engine: "studio" },
 
   // Italian (2)
-  { name: "if_sara", displayName: "Sara", gender: "Female", locale: "it-IT", accent: "Italian", flag: "🇮🇹", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "im_nicola", displayName: "Nicola", gender: "Male", locale: "it-IT", accent: "Italian", flag: "🇮🇹", quality: "Grade A", isPremium: true, engine: "kokoro" },
+  { name: "if_sara", displayName: "Sara", gender: "Female", locale: "it-IT", accent: "Italian", flag: "🇮🇹", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "im_nicola", displayName: "Nicola", gender: "Male", locale: "it-IT", accent: "Italian", flag: "🇮🇹", quality: "Grade A", isPremium: true, engine: "studio" },
 
   // Japanese (5)
-  { name: "jf_alpha", displayName: "Alpha (JP)", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "jf_gongitsune", displayName: "Gongitsune", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "jf_nezumi", displayName: "Nezumi", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "jf_tebukuro", displayName: "Tebukuro", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "jm_kumo", displayName: "Kumo", gender: "Male", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade A", isPremium: true, engine: "kokoro" },
+  { name: "jf_alpha", displayName: "Alpha (JP)", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "jf_gongitsune", displayName: "Gongitsune", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "jf_nezumi", displayName: "Nezumi", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "jf_tebukuro", displayName: "Tebukuro", gender: "Female", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "jm_kumo", displayName: "Kumo", gender: "Male", locale: "ja-JP", accent: "Japanese", flag: "🇯🇵", quality: "Grade A", isPremium: true, engine: "studio" },
 
   // Brazilian Portuguese (3)
-  { name: "pf_dora", displayName: "Dora (BR)", gender: "Female", locale: "pt-BR", accent: "Portuguese", flag: "🇧🇷", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "pm_alex", displayName: "Alex (BR)", gender: "Male", locale: "pt-BR", accent: "Portuguese", flag: "🇧🇷", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "pm_santa", displayName: "Santa (BR)", gender: "Male", locale: "pt-BR", accent: "Portuguese", flag: "🇧🇷", quality: "Grade B", isPremium: true, engine: "kokoro" },
+  { name: "pf_dora", displayName: "Dora (BR)", gender: "Female", locale: "pt-BR", accent: "Portuguese", flag: "🇧🇷", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "pm_alex", displayName: "Alex (BR)", gender: "Male", locale: "pt-BR", accent: "Portuguese", flag: "🇧🇷", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "pm_santa", displayName: "Santa (BR)", gender: "Male", locale: "pt-BR", accent: "Portuguese", flag: "🇧🇷", quality: "Grade B", isPremium: true, engine: "studio" },
 
   // Mandarin Chinese (8)
-  { name: "zf_xiaobei", displayName: "Xiaobei", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "zf_xiaoni", displayName: "Xiaoni", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "zf_xiaoxiao", displayName: "Xiaoxiao", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "zf_xiaoyi", displayName: "Xiaoyi", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "zm_yunjian", displayName: "Yunjian", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade A", isPremium: true, engine: "kokoro" },
-  { name: "zm_yunxi", displayName: "Yunxi", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "zm_yunxia", displayName: "Yunxia", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
-  { name: "zm_yunyang", displayName: "Yunyang", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "kokoro" },
+  { name: "zf_xiaobei", displayName: "Xiaobei", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "zf_xiaoni", displayName: "Xiaoni", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "zf_xiaoxiao", displayName: "Xiaoxiao", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "zf_xiaoyi", displayName: "Xiaoyi", gender: "Female", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "zm_yunjian", displayName: "Yunjian", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade A", isPremium: true, engine: "studio" },
+  { name: "zm_yunxi", displayName: "Yunxi", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "zm_yunxia", displayName: "Yunxia", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "studio" },
+  { name: "zm_yunyang", displayName: "Yunyang", gender: "Male", locale: "zh-CN", accent: "Mandarin", flag: "🇨🇳", quality: "Grade B", isPremium: true, engine: "studio" },
 ];
 
-export const KOKORO_VOICE_NAMES = new Set(KOKORO_PREMIUM_VOICES.map((v) => v.name));
+export const STUDIO_VOICE_NAMES = new Set(STUDIO_PREMIUM_VOICES.map((v) => v.name));
 
-export function isKokoroVoice(voiceName: string): boolean {
-  return KOKORO_VOICE_NAMES.has(voiceName);
+export function isStudioVoice(voiceName: string): boolean {
+  return STUDIO_VOICE_NAMES.has(voiceName);
 }
 
+export const isPremiumVoice = isStudioVoice;
+
 function extractDisplayName(shortName: string): string {
-  // Check if Kokoro voice first
-  const kokoroMatch = KOKORO_PREMIUM_VOICES.find((v) => v.name === shortName);
-  if (kokoroMatch) return kokoroMatch.displayName;
+  // Check if Studio voice first
+  const studioMatch = STUDIO_PREMIUM_VOICES.find((v) => v.name === shortName);
+  if (studioMatch) return studioMatch.displayName;
 
   // "en-US-JennyNeural" → "Jenny"
   const parts = shortName.split("-");
@@ -236,7 +238,7 @@ const LANGUAGE_LABELS: Record<string, { label: string; flag: string }> = {
 };
 
 export function buildPremiumLanguage(): Language {
-  // Group all 54 Kokoro voices by region/accent for the dedicated "Premium Voices" section
+  // Group all 54 Studio voices by region/accent for the dedicated "Premium Voices" section
   const regionMap = new Map<string, { label: string; voices: Voice[] }>();
 
   regionMap.set("US", { label: "American English (20)", voices: [] });
@@ -249,7 +251,7 @@ export function buildPremiumLanguage(): Language {
   regionMap.set("BR", { label: "Portuguese (3)", voices: [] });
   regionMap.set("CN", { label: "Mandarin Chinese (8)", voices: [] });
 
-  for (const voice of KOKORO_PREMIUM_VOICES) {
+  for (const voice of STUDIO_PREMIUM_VOICES) {
     const regCode = voice.locale.split("-")[1] || "US";
     const entry = regionMap.get(regCode);
     if (entry) {
@@ -293,18 +295,18 @@ export function organizeVoices(
 ): Language[] {
   const langMap = new Map<string, Map<string, Voice[]>>();
 
-  // Ensure Kokoro voices are present (either from backend or fallback constant)
+  // Ensure Studio voices are present (either from backend or fallback constant)
   const incomingNames = new Set(rawVoices.map((v) => v.name));
   const fullVoicesList = [...rawVoices];
 
-  for (const kv of KOKORO_PREMIUM_VOICES) {
-    if (!incomingNames.has(kv.name)) {
-      fullVoicesList.push(kv);
+  for (const sv of STUDIO_PREMIUM_VOICES) {
+    if (!incomingNames.has(sv.name)) {
+      fullVoicesList.push(sv);
     }
   }
 
   for (const v of fullVoicesList) {
-    const isKokoro = v.isPremium || isKokoroVoice(v.name);
+    const isStudio = v.isPremium || isStudioVoice(v.name) || v.engine === "studio";
     const parts = v.locale.split("-");
     const langCode = parts[0];
     const regionCode = parts.slice(1).join("-");
@@ -318,8 +320,8 @@ export function organizeVoices(
       displayName: v.displayName || extractDisplayName(v.name),
       gender: v.gender as "Male" | "Female",
       locale: v.locale,
-      isPremium: isKokoro,
-      engine: isKokoro ? "kokoro" : "edge",
+      isPremium: isStudio,
+      engine: isStudio ? "studio" : "edge",
       accent: v.accent,
       flag: v.flag,
       quality: v.quality,
@@ -338,7 +340,7 @@ export function organizeVoices(
     const regions: Region[] = [];
 
     for (const [regionCode, voices] of regionMap) {
-      // Sort: Kokoro Premium voices first, then alphabetical
+      // Sort: Studio Premium voices first, then alphabetical
       voices.sort((a, b) => {
         if (a.isPremium && !b.isPremium) return -1;
         if (!a.isPremium && b.isPremium) return 1;

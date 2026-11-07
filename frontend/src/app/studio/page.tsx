@@ -18,8 +18,8 @@ const FEATURED_VOICES = [
     accent: "American English",
     avatar: "👑",
     color: "#D97706",
-    badge: "👑 PREMIUM KOKORO",
-    description: "Flagship Kokoro-82M studio voice. Unmatched realism, natural human breathing, warmth, and emotion — perfect for high-end narrations, ads, audiobooks, and creators.",
+    badge: "👑 INOVEX STUDIO HQ",
+    description: "Flagship Inovex Studio HD voice. Unmatched realism, natural human breathing, warmth, and emotion — perfect for high-end narrations, ads, audiobooks, and creators.",
     featured: true,
   },
   {
@@ -482,10 +482,10 @@ export default function StudioPage() {
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             <div>
               <p className="text-xs font-semibold text-charcoal flex items-center gap-1.5">
-                Kokoro + Edge Hybrid Engine
+                Inovex Studio + Neural Hybrid Engine
                 <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.2 rounded">v5.0</span>
               </p>
-              <p className="text-[10px] text-muted">54 Kokoro Studio Voices + 300+ Edge Neural Voices active.</p>
+              <p className="text-[10px] text-muted">54 Inovex Studio HD Voices + 300+ Inovex Neural Voices active.</p>
             </div>
           </div>
         </div>

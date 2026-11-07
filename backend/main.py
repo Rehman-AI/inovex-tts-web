@@ -1,6 +1,6 @@
 """
 Inovex TTS — FastAPI Backend
-Serves Edge-TTS and Kokoro-82M synthesis API for the web frontend.
+Serves Inovex Studio HD and Neural synthesis API for the web frontend.
 Pre-generates demo clips for voices at startup for zero-lag playback.
 """
 
@@ -20,11 +20,11 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from kokoro_engine import (
-    is_kokoro_voice,
-    synthesize_kokoro,
-    get_all_kokoro_voices,
-    get_kokoro_voice_info,
+from premium_engine import (
+    is_premium_voice,
+    synthesize_premium,
+    get_all_premium_voices,
+    get_premium_voice_info,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -61,7 +61,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="Inovex TTS API",
-    description="Neural Text-to-Speech powered by Edge-TTS & Kokoro-82M",
+    description="Neural Text-to-Speech powered by Inovex Studio AI & Edge-TTS",
     version="2.0.0",
     lifespan=lifespan,
 )
@@ -124,7 +124,7 @@ DEMO_SENTENCES: dict[str, str] = {
     "ga": "Dia duit, seo sampla de mo ghuth. Is féidir liom aon téacs a léamh le ton nádúrtha agus soiléir. Tá súil agam go mbainfidh tú taitneamh as éisteacht leis seo.",
     "gl": "Ola, esta é unha mostra da miña voz. Podo ler calquera texto cun ton natural e claro. Espero que gocen escoitando esta demostración da miña voz.",
     "gu": "નમસ્તે, આ મારા અવાજનો નમૂનો છે. હું કોઈપણ લખાણને કુદરતી અને સ્પષ્ટ સ્વરમાં વાંચી શકું છું. આશા છે કે તમને આ ડેમો સાંભળવામાં આનંદ આવશે.",
-    "he": "שלום, זו דוגמה של הקול שלי. אני יכול לקרוא כל טקסט בטון טבעי וברור. אני מקווה שתהנו להאזין להדגמה הזו של הקול שלי.",
+    "he": "שלום, זו דוגמה של הקول שלי. אני יכול לקרוא כל טקסט בטון טבעי וברור. אני מקווה שתהנו להאזין להדגמה הזو של הקול שלי.",
     "hi": "नमस्ते, यह मेरी आवाज़ का एक नमूना है। मैं किसी भी पाठ को प्राकृतिक और स्पष्ट स्वर में पढ़ सकता हूँ। मुझे उम्मीद है कि आपको यह डेमो सुनकर अच्छा लगेगा।",
     "hr": "Bok, ovo je primjer mog glasa. Mogu čitati bilo koji tekst prirodnim i jasnim tonom. Nadam se da ćete uživati slušajući ovu demonstraciju mog glasa.",
     "hu": "Helló, ez egy minta a hangomról. Bármilyen szöveget fel tudok olvasni természetes és tiszta hangon. Remélem, élvezni fogják ennek a hangbemutató meghallgatását.",
@@ -137,23 +137,23 @@ DEMO_SENTENCES: dict[str, str] = {
     "kk": "Сәлеметсіз бе, бұл менің дауысымның үлгісі. Мен кез келген мәтінді табиғи және анық дауыспен оқи аламын. Бұл демонстрацияны тыңдау сізге ұнайды деп сенемін.",
     "km": "សួស្តី នេះជាគំរូសម្លេងរបស់ខ្ញុំ។ ខ្ញុំអាចអានអត្ថបទណាមួយដោយសម្លេងធម្មជាតិ និងច្បាស់លាស់។ ខ្ញុំសង្ឃឹមថាអ្នកនឹងរីករាយស្តាប់ការបង្ហាញនេះ។",
     "kn": "ನಮಸ್ಕಾರ, ಇದು ನನ್ನ ಧ್ವನಿಯ ಮಾದರಿ. ನಾನು ಯಾವುದೇ ಪಠ್ಯವನ್ನು ನೈಸರ್ಗಿಕ ಮತ್ತು ಸ್ಪಷ್ಟ ಧ್ವನಿಯಲ್ಲಿ ಓದಬಲ್ಲೆ. ಈ ಪ್ರದರ್ಶನವನ್ನು ಕೇಳಲು ನಿಮಗೆ ಇಷ್ಟವಾಗುತ್ತದೆ ಎಂದು ಭಾವಿಸುತ್ತೇನೆ.",
-    "ko": "안녕하세요, 이것은 제 목소리 샘플입니다. 저는 어떤 텍스트든 자연스럽고 명확한 톤으로 읽을 수 있습니다. 이 음성 데ሞ를 즐겁게 들어주시기 바랍니다.",
+    "ko": "안녕하세요, 이것은 제 목소리 샘플입니다. 저는 어떤 텍스트든 자연스럽고 명확한 톤으로 읽을 수 있습니다. 이 음성 데모를 즐겁게 들어주시기 바랍니다.",
     "lo": "ສະບາຍດີ, ນີ້ແມ່ນຕົວຢ່າງຂອງສຽງຂ້ອຍ. ຂ້ອຍສາມາດອ່ານຂໍ້ຄວາມໃດກໍໄດ້ດ້ວຍສຽງທຳມະຊາດ ແລະ ຊັດເຈນ. ຫວັງວ່າທ່ານຈະມັກຟັງການສາທິດນີ້.",
     "lt": "Sveiki, tai mano balso pavyzdys. Galiu perskaityti bet kokį tekstą natūraliu ir aiškiu balsu. Tikiuosi, kad jums patiks klausytis šios demonstracijos.",
     "lv": "Sveiki, šis ir manas balss paraugs. Es varu nolasīt jebkuru tekstu dabiskā un skaidrā balsī. Ceru, ka jums patiks klausīties šo demonstrāciju.",
-    "mk": "Здраво, ова е пример за мојот глас. Можам да прочитам било кој текст со природен и јасен тон. Се надевам дека ќе уживате слушајќი ја оваа демонстрација.",
+    "mk": "Здраво, ова е пример за мојот глас. Можам да прочитам било кој текст со природен и јасен тон. Се надевам дека ќе уживате слушајќи ја оваа демонстрација.",
     "ml": "ഹലോ, ഇത് എന്റെ ശബ്ദത്തിന്റെ ഒരു സാമ്പിളാണ്. എനിക്ക് ഏത് ടെക്സ്റ്റും സ്വാഭാവികവും വ്യക്തവുമായ ശബ്ദത്തിൽ വായിക്കാൻ കഴിയും. ഈ ഡെമോ ആസ്വദിക്കുമെന്ന് പ്രതീക്ഷിക്കുന്നു.",
     "mn": "Сайн байна уу, энэ бол миний дууны жишээ. Би ямар ч текстийг байгалийн ба тод дуугаар уншиж чадна. Энэ жишээг сонсох таалал авна гэж найдаж байна.",
     "mr": "नमस्कार, हा माझ्या आवाजाचा नमुना आहे. मी कोणताही मजकूर नैसर्गिक आणि स्पष्ट स्वरात वाचू शकतो. हा डेमो ऐकून तुम्हाला आनंद होईल अशी आशा आहे.",
     "ms": "Halo, ini adalah sampel suara saya. Saya boleh membaca apa-apa teks dengan nada yang semula jadi dan jelas. Saya harap anda menikmati mendengar demonstrasi suara ini.",
     "mt": "Bongu, dan huwa eżempju tal-vuċi tiegħi. Nista' naqra kwalunkwe test b'ton naturali u ċar. Nittama li tgawdu tisimgħu din id-dimostrazzjoni tal-vuċi tiegħi.",
-    "my": "မင်္ဂလာပါ၊ ဒါက ကျွန်တော့်အသံနမူနာပါ။ ကျွန်တော် မည်သည့်စာသားကိုမဆို သဘာဝကျပြီး ရှင်းလင်းစွာ ဖတ်ပြနိုင်ပါတယ်။ ဒီသရုပ်ပြမှုကို နှစ်သက်မယ်လို့ မျှော်လင့်ပါတယ်။",
+    "my": "မင်္ဂလာပါ၊ ဒါက ကျွန်တော့်အသံနမူနာပါ။ ကျွန်တော် မည်သည့်စာသားကိုမဆို သဘာဝကျပြီး ရှင်းလင်းစွာ ဖတ်ပြနိုင်ပါတယ်။ ဒီသរုပ်ပြမှုကို နှစ်သက်မယ်လို့ မျှော်လင့်ပါတယ်။",
     "nb": "Hei, dette er et eksempel på stemmen min. Jeg kan lese enhver tekst med en naturlig og klar stemme. Jeg håper du liker å høre på denne demonstrasjonen av stemmen min.",
-    "ne": "नमस्ते, यो मेरो आवाजको नमूना हो। म कुनै पनि पाठ प्राकृतिक र स्पष्ट स्वरमा पढ्न सक्छु। तपाईंलाई यो डेमो सुन्न रमाइलो लाग्छ भन्ने आशा गर्दछु।",
-    "nl": "Hallo, dit is een voorbeeld van mijn stem. Ik kan elke tekst voorlezen met een natural en heldere toon. Ik hoop dat u geniet van het luisteren naar deze demonstratie.",
+    "ne": "नमस्ते, यो मेरो आवाजको नमूना हो। म कुनै पनि पाठ प्राकृतिक र स्पष्ट स्वरमा पढ्न सक्छु। तपाईंलाई यो डेमो सुन्न रमाइलो लाग्छ भन्ने आशा गर्दछु.",
+    "nl": "Hallo, dit is een voorbeeld van mijn stem. Ik kan elke tekst voorlezen met een natuurlijke en heldere toon. Ik hoop dat u geniet van het luisteren naar deze demonstratie.",
     "pl": "Cześć, to jest próbka mojego głosu. Mogę przeczytać dowolny tekst naturalnym i wyraźnym tonem. Mam nadzieję, że spodoba się wam ta demonstracja mojego głosu.",
     "ps": "سلام، دا زما د غږ یوه بیلګه ده. زه کولی شم هر متن په طبیعي او روښانه غږ ولولم. هیله ده چې تاسو د دې نمونې اوریدو څخه خوند واخلئ.",
-    "pt": "Olá, esta é uma amostra da minha voz. Eu posso ler qualquer texto com um tom natural e claro. Espero que gostem de ouvir esta demonstração da minha voz.",
+    "pt": "Olá, esta é uma amostra da minha voz. Eu posso ler qualquer tekst com um tom natural e claro. Espero que gostem de ouvir esta demonstração da minha voz.",
     "ro": "Bună, aceasta este o mostră a vocii mele. Pot citi orice text cu un ton natural și clar. Sper că vă place să ascultați această demonstrație a vocii mele.",
     "ru": "Привет, это пример моего голоса. Я могу прочитать любой текст естественным и чётким голосом. Надеюсь, вам понравится эта демонстрация моего голоса.",
     "si": "හෙලෝ, මෙය මගේ හඬේ නියැදියකි. මට ඕනෑම පෙළක් ස්වාභාවික සහ පැහැදිලි හඬින් කියවිය හැකිය. මෙම නිරූපණය ඔබට ප්‍රිය වේ යැයි මම බලාපොරොත්තු වෙමි.",
@@ -190,22 +190,22 @@ async def _generate_single_demo(voice_name: str) -> bool:
         _demo_cache[voice_name] = cache_file.read_bytes()
         return True
 
-    # 1. Kokoro voice handling
-    if is_kokoro_voice(voice_name):
+    # 1. Inovex Studio voice handling
+    if is_premium_voice(voice_name):
         try:
-            info = get_kokoro_voice_info(voice_name)
+            info = get_premium_voice_info(voice_name)
             lang_key = "en"
             if info:
                 loc = info.get("locale", "en-US")
                 lang_key = loc.split("-")[0]
             demo_text = DEMO_SENTENCES.get(lang_key, DEMO_SENTENCES["en"])
             loop = asyncio.get_running_loop()
-            audio_bytes = await loop.run_in_executor(None, synthesize_kokoro, demo_text, voice_name, 0)
+            audio_bytes = await loop.run_in_executor(None, synthesize_premium, demo_text, voice_name, 0)
             cache_file.write_bytes(audio_bytes)
             _demo_cache[voice_name] = audio_bytes
             return True
         except Exception as exc:
-            logger.warning(f"Failed to generate Kokoro demo for {voice_name}: {exc}")
+            logger.warning(f"Failed to generate Studio demo for {voice_name}: {exc}")
             return False
 
     # 2. Edge-TTS voice handling
@@ -249,14 +249,12 @@ async def _pregenerate_all_demos():
     logger.info("Starting demo pre-generation for all voices...")
 
     try:
-        # Wait a moment for the server to fully start
         await asyncio.sleep(2)
 
         voices = await edge_tts.list_voices()
         voice_names = [v["ShortName"] for v in voices]
         _pregen_status["total"] = len(voice_names)
 
-        # Filter out already-cached voices
         missing = [v for v in voice_names if v not in _demo_cache]
         _pregen_status["done"] = len(voice_names) - len(missing)
 
@@ -270,14 +268,12 @@ async def _pregenerate_all_demos():
                 else:
                     _pregen_status["errors"] += 1
 
-                # Log progress every 25 voices
                 if (i + 1) % 25 == 0:
                     logger.info(
                         f"Pre-generation progress: {_pregen_status['done']}/{_pregen_status['total']} "
                         f"({_pregen_status['errors']} errors)"
                     )
 
-                # Small delay to avoid overwhelming the Edge-TTS service
                 await asyncio.sleep(0.5)
 
             except asyncio.CancelledError:
@@ -286,7 +282,7 @@ async def _pregenerate_all_demos():
             except Exception as exc:
                 _pregen_status["errors"] += 1
                 logger.warning(f"Error generating demo for {voice_name}: {exc}")
-                await asyncio.sleep(1)  # Back off on errors
+                await asyncio.sleep(1)
 
     except asyncio.CancelledError:
         logger.info("Pre-generation cancelled")
@@ -303,24 +299,24 @@ async def _pregenerate_all_demos():
 # ── Endpoints ────────────────────────────────────────────────────────
 @app.get("/api/voices", response_model=list[VoiceInfo])
 async def list_voices():
-    """Return all available Kokoro-82M (Premium) and Edge-TTS voices."""
+    """Return all available Inovex Studio (Premium) and Edge-TTS voices."""
     result: list[VoiceInfo] = []
 
-    # 1. Add all 54 Kokoro-82M Premium voices first
-    for kv in get_all_kokoro_voices():
+    # 1. Add all 54 Inovex Studio Premium voices first
+    for sv in get_all_premium_voices():
         result.append(VoiceInfo(
-            name=kv["name"],
-            displayName=kv["displayName"],
-            gender=kv["gender"],
-            locale=kv["locale"],
-            language=kv["language"],
-            region=kv["region"],
-            accent=kv["accent"],
-            flag=kv["flag"],
+            name=sv["name"],
+            displayName=sv["displayName"],
+            gender=sv["gender"],
+            locale=sv["locale"],
+            language=sv["language"],
+            region=sv["region"],
+            accent=sv["accent"],
+            flag=sv["flag"],
             isPremium=True,
-            engine="kokoro",
-            quality=kv.get("quality", "Studio HQ"),
-            recommended=kv.get("recommended", False),
+            engine="studio",
+            quality=sv.get("quality", "Studio HQ"),
+            recommended=sv.get("recommended", False),
         ))
 
     # 2. Add Edge-TTS voices
@@ -359,7 +355,6 @@ async def demo_voice(voice: str):
     """Return pre-generated demo clip for a voice. Zero lag — served from cache.
     If not yet pre-generated, generates on-the-fly as fallback."""
 
-    # Serve from memory cache (pre-generated) — INSTANT
     if voice in _demo_cache:
         return Response(
             content=_demo_cache[voice],
@@ -367,7 +362,6 @@ async def demo_voice(voice: str):
             headers={"X-Cache": "HIT"},
         )
 
-    # Fallback: generate on-the-fly if pre-generation hasn't reached this voice yet
     success = await _generate_single_demo(voice)
     if success and voice in _demo_cache:
         return Response(
@@ -388,20 +382,20 @@ async def demo_status():
         "errors": _pregen_status["errors"],
         "running": _pregen_status["running"],
         "cached_in_memory": len(_demo_cache),
-        "kokoro_voices_loaded": len(get_all_kokoro_voices()),
+        "premium_voices_loaded": len(get_all_premium_voices()),
     }
 
 
 @app.post("/api/synthesize")
 async def synthesize(req: SynthesizeRequest):
-    """Generate speech audio and return MP3 bytes via Kokoro-82M or Edge-TTS."""
-    # ── 1. Kokoro-82M Premium Voice Synthesis ────────────────────────
-    if is_kokoro_voice(req.voice):
+    """Generate speech audio and return MP3 bytes via Inovex Studio or Edge-TTS."""
+    # ── 1. Inovex Studio Premium Voice Synthesis ─────────────────────
+    if is_premium_voice(req.voice):
         try:
             loop = asyncio.get_running_loop()
             audio_bytes = await loop.run_in_executor(
                 None,
-                synthesize_kokoro,
+                synthesize_premium,
                 req.text,
                 req.voice,
                 req.rate_pct,
@@ -410,14 +404,14 @@ async def synthesize(req: SynthesizeRequest):
                 content=audio_bytes,
                 media_type="audio/mpeg",
                 headers={
-                    "Content-Disposition": f'attachment; filename="inovex_kokoro_{uuid.uuid4().hex[:8]}.mp3"',
+                    "Content-Disposition": f'attachment; filename="inovex_studio_{uuid.uuid4().hex[:8]}.mp3"',
                     "X-Audio-Size": str(len(audio_bytes)),
-                    "X-TTS-Engine": "Kokoro-82M",
+                    "X-TTS-Engine": "Inovex-Studio-HQ",
                 },
             )
         except Exception as exc:
-            logger.error(f"Kokoro synthesis error for {req.voice}: {exc}")
-            raise HTTPException(status_code=500, detail=f"Kokoro synthesis failed: {str(exc)}")
+            logger.error(f"Studio synthesis error for {req.voice}: {exc}")
+            raise HTTPException(status_code=500, detail=f"Studio synthesis failed: {str(exc)}")
 
     # ── 2. Standard Edge-TTS Synthesis ───────────────────────────────
     rate_str = f"{'+' if req.rate_pct >= 0 else ''}{req.rate_pct}%"
@@ -427,7 +421,6 @@ async def synthesize(req: SynthesizeRequest):
         audio_chunks: list[bytes] = []
         last_err = None
 
-        # Retry up to 3 times in case of transient network or rate-limit glitches
         for attempt in range(3):
             try:
                 communicate = edge_tts.Communicate(
@@ -476,7 +469,7 @@ async def health():
     return {
         "status": "ok",
         "service": "Inovex TTS API",
-        "engines": ["Kokoro-82M", "Edge-TTS"],
+        "engines": ["Inovex Studio HD", "Inovex Neural"],
         "premium_voices": 54,
         "demos_ready": _pregen_status["done"],
         "demos_total": _pregen_status["total"],
