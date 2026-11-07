@@ -90,6 +90,13 @@ function SidebarItem({
   );
 }
 
+const LOCAL_DEV_SESSION = {
+  user: {
+    name: "Abdul Rehman",
+    email: "rehmanspam000@gmail.com",
+  },
+};
+
 /* ─── Studio Page ────────────────────────────────────────────── */
 export default function StudioPage() {
   const { data: rawSession } = useSession();
@@ -101,7 +108,7 @@ export default function StudioPage() {
     }
   }, []);
 
-  const session = rawSession || (isLocal ? { user: { name: "Abdul Rehman", email: "rehmanspam000@gmail.com" } } : null);
+  const session = rawSession || (isLocal ? LOCAL_DEV_SESSION : null);
   const isVIP = isUnlimitedUser(session?.user?.email);
   const [text, setText] = useState("");
   const [voice, setVoice] = useState("en-US-AndrewNeural");
@@ -154,7 +161,7 @@ export default function StudioPage() {
         try { setHistoryItems(JSON.parse(hist)); } catch(e) {}
       }
     }
-  }, [session]);
+  }, [session?.user?.email]);
 
   const handleTogglePlayHistory = async (e: React.MouseEvent, item: { id: string; text: string; voice: string }) => {
     e.stopPropagation();

@@ -6,6 +6,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isUnlimitedUser } from "@/utils/userPlan";
 
+const LOCAL_DEV_SESSION = {
+  user: {
+    name: "Abdul Rehman",
+    email: "rehmanspam000@gmail.com",
+  },
+};
+
 export default function Navbar() {
   const { data: rawSession, status: rawStatus } = useSession();
   const [isLocal, setIsLocal] = useState(false);
@@ -16,7 +23,7 @@ export default function Navbar() {
     }
   }, []);
 
-  const session = rawSession || (isLocal ? { user: { name: "Abdul Rehman", email: "rehmanspam000@gmail.com" } } : null);
+  const session = rawSession || (isLocal ? LOCAL_DEV_SESSION : null);
   const status = rawSession ? rawStatus : (isLocal ? "authenticated" : rawStatus);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -59,7 +66,7 @@ export default function Navbar() {
       window.removeEventListener('storage', fetchChars);
       window.removeEventListener('chars-updated', fetchChars);
     };
-  }, [session]);
+  }, [session?.user?.email]);
 
   const navLinks = [
     { label: "Synthesis", href: "/studio" },
