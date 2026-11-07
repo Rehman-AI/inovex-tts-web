@@ -69,10 +69,8 @@ export default function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSel
       demoAudioRef.current.currentTime = 0;
     }
 
-    // Determine initial URL: Studio voices are served from API, static Edge-TTS from /demos/
-    const initialUrl = (isPremium || voiceName.includes("_"))
-      ? `${API_URL}/api/demo?voice=${voiceName}`
-      : `/demos/${voiceName}.mp3`;
+    // Determine initial URL: static pre-generated demos from /demos/, fallback to API
+    const initialUrl = `/demos/${voiceName}.mp3`;
 
     const audio = new Audio(initialUrl);
     demoAudioRef.current = audio;
